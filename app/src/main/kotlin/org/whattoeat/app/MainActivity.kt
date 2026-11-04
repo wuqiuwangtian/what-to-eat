@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +19,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.whattoeat.core.*
@@ -28,9 +31,26 @@ import java.time.format.DateTimeFormatter
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = android.graphics.Color.WHITE
+        window.navigationBarColor = android.graphics.Color.WHITE
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = true
+            isAppearanceLightNavigationBars = true
+        }
         setContent {
-            MaterialTheme(colorScheme = lightColorScheme(primary = Color(0xFF96512F), secondary = Color(0xFF466753),
-                background = Color(0xFFFAF8F3), surface = Color(0xFFFFFCF7))) { App() }
+            MaterialTheme(
+                colorScheme = lightColorScheme(
+                    primary = Color(0xFF1D1D1F), onPrimary = Color.White,
+                    secondary = Color(0xFF6E6E73), onSecondary = Color.White,
+                    background = Color.White, surface = Color.White,
+                    surfaceVariant = Color(0xFFF5F5F7), onSurfaceVariant = Color(0xFF6E6E73),
+                    surfaceContainer = Color(0xFFF5F5F7), surfaceContainerLow = Color(0xFFF5F5F7),
+                    surfaceContainerHighest = Color(0xFFF5F5F7), secondaryContainer = Color(0xFFF5F5F7),
+                    onSecondaryContainer = Color(0xFF1D1D1F), outline = Color(0xFFD2D2D7),
+                ),
+                shapes = Shapes(small = RoundedCornerShape(8.dp), medium = RoundedCornerShape(14.dp),
+                    large = RoundedCornerShape(20.dp)),
+            ) { App() }
         }
     }
 }
@@ -45,72 +65,103 @@ private fun App(vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     var page by rememberSaveable { mutableStateOf("home") }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::export) }
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.safeDrawingPadding().fillMaxWidth().widthIn(max = 680.dp).verticalScroll(rememberScrollState()).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { page = "home" }) { Text("吃什么", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-                Row {
-                    TextButton(onClick = { page = "history" }) { Text("记录") }
-                    TextButton(onClick = { page = "settings" }) { Text("设置") }
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(state.notice) {
+        if (state.notice.isNotBlank()) snackbar.showSnackbar(state.notice)
+    }
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.widthIn(max = 580.dp).fillMaxSize().padding(horizontal = 24.dp)) {
+                Row(Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    if (page == "home") Spacer(Modifier.weight(1f))
+                    else TextButton(onClick = { page = "home" }) {
+                        Text("‹ 吃什么", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    Row {
+                        TextButton(onClick = { page = "history" }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("记录") }
+                        TextButton(onClick = { page = "settings" }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("设置") }
+                    }
+                }
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    if (state.loading) CircularProgressIndicator(Modifier.align(Alignment.Center))
+                    else if (page == "home") Home(state, vm,
+                        { vm.resetAnalysis(); page = "meal" }, { vm.resetComparison(); page = "compare" })
+                    else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 24.dp, bottom = 32.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        when (page) {
+                            "meal" -> MealPage(state, vm)
+                            "compare" -> ComparePage(state, vm)
+                            "history" -> HistoryPage(state, vm, { exporter.launch("what-to-eat-records.json") })
+                            "settings" -> SettingsPage(state, vm)
+                        }
+                    }
+                    if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
                 }
             }
-            if (state.notice.isNotBlank()) Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = MaterialTheme.shapes.medium) {
-                Text(state.notice, Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium)
-            }
-            if (state.loading) {
-                CircularProgressIndicator()
-                Text("正在读取本地餐食库…")
-            } else when (page) {
-                "home" -> Home(state, vm, { vm.resetAnalysis(); page = "meal" }, { vm.resetComparison(); page = "compare" })
-                "meal" -> MealPage(state, vm)
-                "compare" -> ComparePage(state, vm)
-                "history" -> HistoryPage(state, vm, { exporter.launch("what-to-eat-records.json") })
-                "settings" -> SettingsPage(state, vm)
-            }
-            if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Spacer(Modifier.height(12.dp))
-            Text("记录留在本机 · 云端功能由你主动开启", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCompare: () -> Unit) {
-    Spacer(Modifier.height(24.dp))
-    Text("少一点纠结，\n好好吃这一顿。", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
-    Text("不用填问卷，也不用配置 AI。\n先从一个简单的答案开始。", style = MaterialTheme.typography.bodyLarge)
-    state.decision?.let { decision ->
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("这顿可以吃", style = MaterialTheme.typography.labelLarge)
-                Text(decision.food.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(decision.reasons.first(), style = MaterialTheme.typography.bodyMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { vm.feedback(EventType.PLANNED, decision.food) }, enabled = !state.busy) { Text("就它了") }
-                    TextButton(onClick = { vm.feedback(EventType.EATEN, decision.food) }, enabled = !state.busy) { Text("确认吃过") }
+    var detailOpen by remember { mutableStateOf(false) }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val mainHeight = (maxHeight - 80.dp).coerceAtLeast(240.dp)
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.fillMaxWidth().heightIn(min = mainHeight).padding(vertical = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                state.decision?.let { decision ->
+                    Text(decision.food.name, Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                        fontSize = 30.sp, lineHeight = 42.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(12.dp))
+                    TextButton(onClick = { detailOpen = true },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("为什么推荐") }
+                    Spacer(Modifier.height(32.dp))
                 }
-                var expanded by remember(decision) { mutableStateOf(false) }
-                TextButton(onClick = { expanded = !expanded }) { Text(if (expanded) "收起依据" else "为什么推荐") }
-                if (expanded) {
-                    decision.reasons.forEach { Text("· $it") }
-                    decision.factors.forEach { (name, score) -> Text("$name：${"%.2f".format(score)}") }
-                    Text("${decision.algorithmVersion} · ${decision.strategy}\n依据：本地菜品标签、明确设置、允许学习的历史记录。\n不是实时商家信息；实际原料需向商家确认。", style = MaterialTheme.typography.bodySmall)
-                    Row {
-                        TextButton(onClick = { vm.feedback(EventType.PREFERRED, decision.food) }, enabled = !state.busy) { Text("我喜欢") }
-                        TextButton(onClick = { vm.feedback(EventType.DISLIKED, decision.food) }, enabled = !state.busy) { Text("不太喜欢") }
-                        TextButton(onClick = { vm.exclude(decision.food) }, enabled = !state.busy) { Text("长期排除") }
-                    }
+                Button(onClick = vm::recommend, enabled = !state.busy,
+                    shape = RoundedCornerShape(16.dp), modifier = Modifier.widthIn(min = 220.dp).height(56.dp)) {
+                    Text(if (state.decision == null) "吃什么？" else "换一个", fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 }
+                state.decision?.let { decision ->
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = { vm.feedback(EventType.PLANNED, decision.food) }, enabled = !state.busy) { Text("就它了") }
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(bottom = 24.dp), horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = openMeal, enabled = !state.busy,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("看看这顿") }
+                Spacer(Modifier.width(24.dp))
+                TextButton(onClick = openCompare, enabled = !state.busy,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("帮我二选一") }
             }
         }
     }
-    Button(onClick = vm::recommend, enabled = !state.busy, modifier = Modifier.fillMaxWidth().height(60.dp)) {
-        Text(if (state.decision == null) "吃什么？" else "换一个", style = MaterialTheme.typography.titleLarge)
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedButton(onClick = openMeal, modifier = Modifier.weight(1f), enabled = !state.busy) { Text("看看这顿") }
-        OutlinedButton(onClick = openCompare, modifier = Modifier.weight(1f), enabled = !state.busy) { Text("帮我二选一") }
+    if (detailOpen) state.decision?.let { decision ->
+        ModalBottomSheet(onDismissRequest = { detailOpen = false }, containerColor = Color.White) {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(decision.food.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                decision.reasons.forEach { Text(it) }
+                Text("实际配料请向商家确认。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                OutlinedButton(onClick = { vm.feedback(EventType.EATEN, decision.food) }, enabled = !state.busy) { Text("确认吃过") }
+                Row {
+                    TextButton(onClick = { vm.feedback(EventType.PREFERRED, decision.food) }, enabled = !state.busy) { Text("我喜欢") }
+                    TextButton(onClick = { vm.feedback(EventType.DISLIKED, decision.food) }, enabled = !state.busy) { Text("不太喜欢") }
+                    TextButton(onClick = { vm.exclude(decision.food); detailOpen = false }, enabled = !state.busy) { Text("长期排除") }
+                }
+                var technical by remember { mutableStateOf(false) }
+                TextButton(onClick = { technical = !technical }) { Text("决策详情") }
+                if (technical) {
+                    decision.factors.forEach { (name, score) -> Text("$name：${"%.2f".format(score)}", style = MaterialTheme.typography.bodySmall) }
+                    Text("${decision.algorithmVersion} · ${decision.strategy}", style = MaterialTheme.typography.bodySmall)
+                }
+                TextButton(onClick = { detailOpen = false }) { Text("收起依据") }
+                Spacer(Modifier.height(16.dp))
+            }
+        }
     }
 }
 
@@ -131,7 +182,6 @@ private fun FoodSearch(label: String, foods: List<Food>, initial: String = "", o
 @Composable
 private fun MealPage(state: UiState, vm: MainViewModel) {
     Text("看看这顿", style = MaterialTheme.typography.headlineMedium)
-    Text("说说准备吃什么，或刚吃了什么。先给建议，再由你决定是否记录。")
     var text by rememberSaveable { mutableStateOf("") }
     var eaten by rememberSaveable { mutableStateOf(false) }
     var positive by rememberSaveable { mutableStateOf(false) }
@@ -144,9 +194,9 @@ private fun MealPage(state: UiState, vm: MainViewModel) {
         Spacer(Modifier.width(8.dp))
         FilterChip(selected = eaten, onClick = { eaten = true }, label = { Text("已经吃过") })
     }
-    OutlinedTextField(time, { time = it }, label = { Text("时间（yyyy-MM-dd HH:mm）") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-    Button(onClick = { vm.analyze(text) }, enabled = text.isNotBlank() && !state.busy) { Text("本地看看搭配") }
-    if (state.modelEnabled) TextButton(onClick = { vm.analyze(text, cloud = true) }, enabled = text.isNotBlank() && !state.busy) { Text("用已配置模型解析（上传这段文字）") }
+    OutlinedTextField(time, { time = it }, label = { Text("时间") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+    Button(onClick = { vm.analyze(text) }, enabled = text.isNotBlank() && !state.busy) { Text("看看搭配") }
+    if (state.modelEnabled) TextButton(onClick = { vm.analyze(text, cloud = true) }, enabled = text.isNotBlank() && !state.busy) { Text("云端解析（上传文字）") }
     state.analysis?.let { analysis ->
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -159,6 +209,8 @@ private fun MealPage(state: UiState, vm: MainViewModel) {
                     }
                 }
                 analysis.suggestions.forEach { Text(it) }
+                Text("仅供一般搭配参考，不提供疾病膳食方案。", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary)
                 FoodSearch("补充／纠正菜名", vm.foods) { food -> selected = selected + food.id }
                 selected.filter { id -> analysis.foods.none { it.id == id } }.forEach { id ->
                     TextButton(onClick = { selected = selected - id }) { Text("已添加：${vm.foods.first { it.id == id }.name}（点此移除）") }
@@ -174,13 +226,11 @@ private fun MealPage(state: UiState, vm: MainViewModel) {
             }
         }
     }
-    Text("一般性搭配参考，不计算精确热量，不提供疾病膳食方案。", style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable
 private fun ComparePage(state: UiState, vm: MainViewModel) {
     Text("帮我二选一", style = MaterialTheme.typography.headlineMedium)
-    Text("把备选交给我，最后怎么选仍由你决定。")
     var first by rememberSaveable { mutableStateOf<String?>(null) }
     var second by rememberSaveable { mutableStateOf<String?>(null) }
     FoodSearch("第一道菜", vm.foods, onChange = { first = null; vm.resetComparison() }) { first = it.id; vm.resetComparison() }
@@ -211,14 +261,13 @@ private fun typeLabel(type: String) = when (type) {
 @Composable
 private fun HistoryPage(state: UiState, vm: MainViewModel, export: () -> Unit) {
     Text("我的记录", style = MaterialTheme.typography.headlineMedium)
-    Text("推荐过、打算吃和确认吃过分别记录。删除或修改后，后续推荐按剩余记录重新计算。")
     OutlinedButton(onClick = export, enabled = !state.busy) { Text("导出记录与设置") }
     var onlyMeals by rememberSaveable { mutableStateOf(true) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Checkbox(onlyMeals, { onlyMeals = it }); Text("只看餐食记录")
     }
     val visible = state.rows.filter { !onlyMeals || it.type in setOf("EATEN", "PLANNED", "ORDERED") }
-    if (visible.isEmpty()) Text("还没有这类记录。你可以完全不记录，照常使用推荐。")
+    if (visible.isEmpty()) Text("暂无记录")
     var editing by remember { mutableStateOf<EventRow?>(null) }
     var deleting by remember { mutableStateOf<EventRow?>(null) }
     visible.take(200).forEach { row ->
@@ -226,11 +275,13 @@ private fun HistoryPage(state: UiState, vm: MainViewModel, export: () -> Unit) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(row.foodName, style = MaterialTheme.typography.titleMedium)
                 Text("${typeLabel(row.type)} · ${Instant.ofEpochMilli(row.time).atZone(ZoneId.systemDefault()).format(dateFormat)}")
-                Text("来源：${row.source} · 置信度 ${row.confidence}", style = MaterialTheme.typography.bodySmall)
-                if (row.detail.isNotBlank()) {
+                run {
                     var expanded by remember(row.id) { mutableStateOf(false) }
-                    TextButton(onClick = { expanded = !expanded }) { Text("查看决策记录") }
-                    if (expanded) Text(row.detail, style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = { expanded = !expanded }) { Text("详情") }
+                    if (expanded) {
+                        Text("来源：${row.source} · 置信度 ${row.confidence}", style = MaterialTheme.typography.bodySmall)
+                        if (row.detail.isNotBlank()) Text(row.detail, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
                 Row {
                     if (row.type in setOf("EATEN", "PLANNED", "ORDERED")) TextButton(onClick = { editing = row }, enabled = !state.busy) { Text("修改") }
@@ -279,9 +330,9 @@ private fun SettingsPage(state: UiState, vm: MainViewModel) {
     var preferred by remember(state.preferences) { mutableStateOf(state.preferences.preferredGroups.joinToString(",")) }
     var context by remember(state.preferences) { mutableStateOf(state.preferences.context) }
     var learning by remember(state.preferences) { mutableStateOf(state.preferences.learningEnabled) }
-    OutlinedTextField(excluded, { excluded = it }, label = { Text("明确排除的原料，用逗号分隔") }, placeholder = { Text("例如：花生,虾") }, modifier = Modifier.fillMaxWidth())
-    Text("仅依据典型配方过滤，未填写不代表没有限制；过敏者仍需确认实际配料及交叉接触风险。", style = MaterialTheme.typography.bodySmall)
-    OutlinedTextField(preferred, { preferred = it }, label = { Text("偏好标签（可留空）") }, placeholder = { Text("例如：家常,面食,清淡") }, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(excluded, { excluded = it }, label = { Text("不吃的原料") }, placeholder = { Text("例如：花生,虾") }, modifier = Modifier.fillMaxWidth())
+    Text("按常见配方过滤；过敏者仍需确认实际配料及交叉接触。", style = MaterialTheme.typography.bodySmall)
+    OutlinedTextField(preferred, { preferred = it }, label = { Text("口味偏好") }, placeholder = { Text("例如：家常,面食,清淡") }, modifier = Modifier.fillMaxWidth())
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("外卖", "食堂", "自炊").forEach { item -> FilterChip(context == item, { context = item }, label = { Text(item) }) }
     }
@@ -292,7 +343,9 @@ private fun SettingsPage(state: UiState, vm: MainViewModel) {
         TextButton(onClick = { vm.savePreferences(state.preferences.copy(excludedFoodIds = emptySet())) }, enabled = !state.busy) { Text("恢复所有长期排除的餐食") }
     }
     HorizontalDivider()
-    Text("可选云端模型", style = MaterialTheme.typography.titleLarge)
+    var modelExpanded by rememberSaveable { mutableStateOf(false) }
+    TextButton(onClick = { modelExpanded = !modelExpanded }) { Text("云端模型 · ${if (state.modelEnabled) "已配置" else "未启用"}") }
+    if (modelExpanded) {
     Text("应用不提供模型服务。启用后，主动点击解析会把该段文字与菜品库发送给你指定的提供商，可能产生费用；普通推荐与换选不联网。")
     Text("当前：${if (state.modelEnabled) "已配置 ${state.modelName}" else "关闭"}")
     var base by remember(state.modelBaseUrl) { mutableStateOf(state.modelBaseUrl) }
@@ -305,8 +358,11 @@ private fun SettingsPage(state: UiState, vm: MainViewModel) {
     Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(consent, { consent = it }); Text("我了解数据将发往该提供商，并自行承担调用费用。", Modifier.weight(1f)) }
     Button(onClick = { vm.saveModel(base, model, key); key = "" }, enabled = consent && !state.busy) { Text("保存并启用云端配置") }
     if (state.modelEnabled) TextButton(onClick = vm::disableModel, enabled = !state.busy) { Text("关闭云端并删除密钥") }
+    }
     HorizontalDivider()
-    Text("验证工具", style = MaterialTheme.typography.titleLarge)
+    var toolsExpanded by rememberSaveable { mutableStateOf(false) }
+    TextButton(onClick = { toolsExpanded = !toolsExpanded }) { Text("验证工具") }
+    if (toolsExpanded) {
     Text("可切换本地策略检查行为。下面的单次输出对照不代表哪种方案效果更好。")
     Strategy.entries.forEach { strategy ->
         FilterChip(state.strategy == strategy, { vm.selectStrategy(strategy) }, label = { Text(when (strategy) {
@@ -318,6 +374,7 @@ private fun SettingsPage(state: UiState, vm: MainViewModel) {
         OutlinedButton(onClick = vm::benchmarkCloud, enabled = !state.busy) { Text("运行四组输出对照（上传历史）") }
     }
     if (state.benchmark.isNotBlank()) Text(state.benchmark)
+    }
     HorizontalDivider()
     var clearing by remember { mutableStateOf(false) }
     TextButton(onClick = { clearing = true }, enabled = !state.busy) { Text("清除全部本地数据") }
@@ -335,5 +392,4 @@ private fun SettingsPage(state: UiState, vm: MainViewModel) {
     licenses?.let { content -> AlertDialog(onDismissRequest = { licenses = null }, title = { Text("开源许可与归属") },
         text = { Text(content, Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall) },
         confirmButton = { TextButton(onClick = { licenses = null }) { Text("关闭") } }) }
-    Text("开发预览 · MIT\n无账号、无应用后端、无自动遥测。仅提供一般性搭配参考。", style = MaterialTheme.typography.bodySmall)
 }

@@ -24,10 +24,13 @@ class SmokeTest {
         waitForHome()
         rule.onNodeWithText("看看这顿").performScrollTo().performClick()
         rule.onNodeWithText("餐食描述").performTextInput("打算吃番茄炒蛋")
-        rule.onNodeWithText("本地看看搭配").performScrollTo().performClick()
+        rule.onNodeWithText("看看搭配").performScrollTo().performClick()
         rule.onNodeWithText("保存为计划").performScrollTo().performClick()
         rule.waitUntil(10_000) { rule.onAllNodesWithText("记录").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithText("记录").performScrollTo().performClick()
+        rule.onNodeWithText("记录").assertIsDisplayed().performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodes(hasText("打算吃", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onAllNodes(hasText("打算吃", substring = true)).onFirst().assertExists()
     }
 }

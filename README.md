@@ -8,7 +8,7 @@
 
 已通过20项单元测试、4项Android 10模拟器设备测试及开发APK构建，Lint无错误。真机性能、真实模型服务与真人效果尚未验证。
 
-[实际首页截图](docs/images/android-home.png) · [实际推荐截图](docs/images/android-recommendation.png)
+[实际首页截图](docs/images/android-home.png) · [实际推荐截图](docs/images/android-recommendation.png) · [餐食页](docs/images/android-meal.png) · [设置页](docs/images/android-settings.png)
 
 ## 当前能力
 

@@ -114,14 +114,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun analyze(text: String, cloud: Boolean = false) {
         if (text.isBlank() || text.length > 2000) { mutable.update { it.copy(notice = "请输入 1–2000 字餐食描述。") }; return }
-        if (!cloud) { mutable.update { it.copy(analysis = analyzer.analyze(text), notice = "尚未保存；请核对菜品与事件类型。") }; return }
+        if (!cloud) { mutable.update { it.copy(analysis = analyzer.analyze(text), notice = "") }; return }
         val config = modelConfig ?: return
         modelJob?.cancel()
         modelJob = viewModelScope.launch {
             mutable.update { it.copy(busy = true, notice = "正在解析；不会自动保存记录。") }
             try {
                 val ids = CompatibleModelProvider(config).normalize(text, foods)
-                mutable.update { it.copy(analysis = analyzer.assess(foods.filter { f -> f.id in ids }, if (ids.isEmpty()) text else null), notice = "模型仅辅助匹配菜品；请核对后保存。") }
+                mutable.update { it.copy(analysis = analyzer.assess(foods.filter { f -> f.id in ids }, if (ids.isEmpty()) text else null), notice = "") }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { mutable.update { it.copy(analysis = analyzer.analyze(text), notice = "模型不可用，已回退本地解析；未保存。") } }
             finally { mutable.update { it.copy(busy = false) } }
@@ -147,7 +147,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val pair = foods.filter { it.id == firstId || it.id == secondId }
         if (pair.size != 2) { mutable.update { it.copy(notice = "请选择两道不同的已知菜品。") }; return }
         val d = engine.recommend(pair, history(), context().copy(shownIds = emptySet()), mutable.value.strategy)
-        mutable.update { it.copy(compared = d, comparisonFoods = pair, notice = if (d == null) "两道菜都不符合当前限制。" else "这是系统建议；你的选择可单独记录。") }
+        mutable.update { it.copy(compared = d, comparisonFoods = pair, notice = if (d == null) "两道菜都不符合当前限制。" else "") }
     }
     fun resetComparison() { mutable.update { it.copy(compared = null, comparisonFoods = emptyList()) } }
 
