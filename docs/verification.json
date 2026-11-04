@@ -47,6 +47,7 @@
   "remote_ci": {
     "baseline": "https://github.com/wuqiuwangtian/what-to-eat/actions/runs/41835353458",
     "baseline_result": "success",
-    "ui_revision": "pending push"
+    "ui_revision": "0c40a8d",
+    "ui_run": "https://github.com/wuqiuwangtian/what-to-eat/actions/runs/41836279544"
   }
 }
