@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-04",
+  "environment": "WSL Linux, Temurin JDK17, Android API29 x86_64 emulator (Pixel 2 profile)",
+  "command": "./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:connectedDebugAndroidTest --console=plain",
+  "result": "BUILD SUCCESSFUL",
+  "tests": [
+    {
+      "name": "org.whattoeat.core.RecommenderTest",
+      "tests": "12",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "org.whattoeat.app.ModelContractTest",
+      "tests": "5",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "org.whattoeat.app.ProviderTransportTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    {
+      "name": "org.whattoeat.app.SmokeTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    }
+  ],
+  "lint_issues": {
+    "GradleDependency": 10,
+    "UseKtx": 4
+  },
+  "apk_sha256": "6a8b70e523312fa218e9e0edce562ec749662db933604bf2457d9afed7ec2a2e",
+  "not_verified": [
+    "physical devices and performance percentiles",
+    "real provider API credentials",
+    "human recommendation effectiveness",
+    "formal release and upgrade signing",
+    "remote CI (workflow scope missing)"
+  ]
+}
