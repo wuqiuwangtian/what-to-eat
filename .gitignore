@@ -1,0 +1,14 @@
+*.iml
+.idea/
+.gradle/
+.kotlin/
+**/build/
+local.properties
+*.jks
+*.keystore
+.env
+.env.*
+!.env.example
+private/
+artifacts/
+*.hprof

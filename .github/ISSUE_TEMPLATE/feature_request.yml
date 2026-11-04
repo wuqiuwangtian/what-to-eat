@@ -1,0 +1,13 @@
+name: 功能建议
+description: 说明实际场景与取舍
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决什么吃饭决策问题？
+    validations:
+      required: true
+  - type: textarea
+    id: tradeoff
+    attributes:
+      label: 预期行为、替代方案及交互负担
