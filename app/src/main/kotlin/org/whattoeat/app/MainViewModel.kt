@@ -15,6 +15,7 @@ import java.time.Instant
 import java.util.UUID
 
 data class UiState(
+    val dataGeneration: Int = 0,
     val loading: Boolean = true,
     val busy: Boolean = false,
     val rows: List<EventRow> = emptyList(),
@@ -205,7 +206,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         withContext(Dispatchers.IO) { settings.clear(); vault.clear() }
         database.events().clear()
         modelConfig = null
-        mutable.update { UiState(loading = false, busy = true, notice = "已清除本地记录、偏好与 API 配置；外部导出文件和服务商留存需另行处理。") }
+        mutable.update { previous -> UiState(dataGeneration = previous.dataGeneration + 1, loading = false, busy = true, notice = "已清除本地记录、偏好与 API 配置；外部导出文件和服务商留存需另行处理。") }
         shown.clear()
         sessionId = UUID.randomUUID().toString()
     }

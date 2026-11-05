@@ -2,6 +2,7 @@ package org.whattoeat.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -60,10 +62,19 @@ private fun parseTime(value: String): Instant? = runCatching {
     LocalDateTime.parse(value, dateFormat).atZone(ZoneId.systemDefault()).toInstant()
 }.getOrNull()
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun App(vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    key(state.dataGeneration) { AppContent(state, vm) }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AppContent(state: UiState, vm: MainViewModel) {
     var page by rememberSaveable { mutableStateOf("home") }
+    val pages = rememberSaveableStateHolder()
+    BackHandler(enabled = page != "home") { page = "home" }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::export) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.notice) {
@@ -72,10 +83,9 @@ private fun App(vm: MainViewModel = viewModel()) {
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = 580.dp).fillMaxSize().padding(horizontal = 24.dp)) {
-                Row(Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically) {
-                    if (page == "home") Spacer(Modifier.weight(1f))
-                    else TextButton(onClick = { page = "home" }) {
+                FlowRow(Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                    horizontalArrangement = if (page == "home") Arrangement.End else Arrangement.SpaceBetween) {
+                    if (page != "home") TextButton(onClick = { page = "home" }) {
                         Text("‹ 吃什么", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                     }
                     Row {
@@ -84,6 +94,7 @@ private fun App(vm: MainViewModel = viewModel()) {
                     }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
+                    pages.SaveableStateProvider(page) {
                     if (state.loading) CircularProgressIndicator(Modifier.align(Alignment.Center))
                     else if (page == "home") Home(state, vm,
                         { vm.resetAnalysis(); page = "meal" }, { vm.resetComparison(); page = "compare" })
@@ -96,6 +107,7 @@ private fun App(vm: MainViewModel = viewModel()) {
                             "settings" -> SettingsPage(state, vm)
                         }
                     }
+                    }
                     if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
                 }
             }
@@ -103,7 +115,7 @@ private fun App(vm: MainViewModel = viewModel()) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCompare: () -> Unit) {
     var detailOpen by remember { mutableStateOf(false) }
@@ -121,7 +133,7 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
                     Spacer(Modifier.height(32.dp))
                 }
                 Button(onClick = vm::recommend, enabled = !state.busy,
-                    shape = RoundedCornerShape(16.dp), modifier = Modifier.widthIn(min = 220.dp).height(56.dp)) {
+                    shape = RoundedCornerShape(16.dp), modifier = Modifier.widthIn(min = 220.dp).heightIn(min = 56.dp)) {
                     Text(if (state.decision == null) "吃什么？" else "换一个", fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 }
                 state.decision?.let { decision ->
@@ -129,11 +141,9 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
                     TextButton(onClick = { vm.feedback(EventType.PLANNED, decision.food) }, enabled = !state.busy) { Text("就它了") }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(bottom = 24.dp), horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically) {
+            FlowRow(Modifier.fillMaxWidth().padding(bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally)) {
                 TextButton(onClick = openMeal, enabled = !state.busy,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("看看这顿") }
-                Spacer(Modifier.width(24.dp))
                 TextButton(onClick = openCompare, enabled = !state.busy,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("帮我二选一") }
             }
@@ -147,7 +157,7 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
                 decision.reasons.forEach { Text(it) }
                 Text("实际配料请向商家确认。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                 OutlinedButton(onClick = { vm.feedback(EventType.EATEN, decision.food) }, enabled = !state.busy) { Text("确认吃过") }
-                Row {
+                FlowRow {
                     TextButton(onClick = { vm.feedback(EventType.PREFERRED, decision.food) }, enabled = !state.busy) { Text("我喜欢") }
                     TextButton(onClick = { vm.feedback(EventType.DISLIKED, decision.food) }, enabled = !state.busy) { Text("不太喜欢") }
                     TextButton(onClick = { vm.exclude(decision.food); detailOpen = false }, enabled = !state.busy) { Text("长期排除") }
@@ -186,8 +196,9 @@ private fun MealPage(state: UiState, vm: MainViewModel) {
     var eaten by rememberSaveable { mutableStateOf(false) }
     var positive by rememberSaveable { mutableStateOf(false) }
     var time by rememberSaveable { mutableStateOf(currentTimeText()) }
-    var selected by remember { mutableStateOf(setOf<String>()) }
-    LaunchedEffect(state.analysis) { selected = state.analysis?.foods?.map(Food::id)?.toSet().orEmpty() }
+    var selected by rememberSaveable(state.analysis) {
+        mutableStateOf(state.analysis?.foods?.map(Food::id).orEmpty())
+    }
     OutlinedTextField(text, { text = it; vm.resetAnalysis() }, label = { Text("餐食描述") }, placeholder = { Text("例如：准备吃牛肉面") }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy)
     Row {
         FilterChip(selected = !eaten, onClick = { eaten = false }, label = { Text("准备吃") })
@@ -204,14 +215,14 @@ private fun MealPage(state: UiState, vm: MainViewModel) {
                 if (analysis.foods.isEmpty()) Text("未识别到已知餐食；可保留原文，不推测组成。")
                 analysis.foods.forEach { food ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(food.id in selected, { checked -> selected = if (checked) selected + food.id else selected - food.id })
+                        Checkbox(food.id in selected, { checked -> selected = if (checked) (selected + food.id).distinct() else selected - food.id })
                         Text(food.name, Modifier.weight(1f))
                     }
                 }
                 analysis.suggestions.forEach { Text(it) }
                 Text("仅供一般搭配参考，不提供疾病膳食方案。", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary)
-                FoodSearch("补充／纠正菜名", vm.foods) { food -> selected = selected + food.id }
+                FoodSearch("补充／纠正菜名", vm.foods) { food -> selected = (selected + food.id).distinct() }
                 selected.filter { id -> analysis.foods.none { it.id == id } }.forEach { id ->
                     TextButton(onClick = { selected = selected - id }) { Text("已添加：${vm.foods.first { it.id == id }.name}（点此移除）") }
                 }
@@ -222,7 +233,7 @@ private fun MealPage(state: UiState, vm: MainViewModel) {
                 val at = parseTime(time)
                 val validTime = at != null && (!eaten || !at.isAfter(Instant.now().plusSeconds(300)))
                 if (!validTime) Text("请检查时间；吃过的餐食不能记录为未来时间。", color = MaterialTheme.colorScheme.error)
-                Button(onClick = { at?.let { vm.saveMeal(selected, text, if (eaten) EventType.EATEN else EventType.PLANNED, it, positive) } }, enabled = validTime && !state.busy) { Text(if (eaten) "保存为吃过" else "保存为计划") }
+                Button(onClick = { at?.let { vm.saveMeal(selected.toSet(), text, if (eaten) EventType.EATEN else EventType.PLANNED, it, positive) } }, enabled = validTime && !state.busy) { Text(if (eaten) "保存为吃过" else "保存为计划") }
             }
         }
     }
@@ -323,6 +334,7 @@ private fun EditDialog(row: EventRow, foods: List<Food>, onDismiss: () -> Unit, 
     }, dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } })
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsPage(state: UiState, vm: MainViewModel) {
     Text("偏好与数据", style = MaterialTheme.typography.headlineMedium)
@@ -333,7 +345,7 @@ private fun SettingsPage(state: UiState, vm: MainViewModel) {
     OutlinedTextField(excluded, { excluded = it }, label = { Text("不吃的原料") }, placeholder = { Text("例如：花生,虾") }, modifier = Modifier.fillMaxWidth())
     Text("按常见配方过滤；过敏者仍需确认实际配料及交叉接触。", style = MaterialTheme.typography.bodySmall)
     OutlinedTextField(preferred, { preferred = it }, label = { Text("口味偏好") }, placeholder = { Text("例如：家常,面食,清淡") }, modifier = Modifier.fillMaxWidth())
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("外卖", "食堂", "自炊").forEach { item -> FilterChip(context == item, { context = item }, label = { Text(item) }) }
     }
     Row(verticalAlignment = Alignment.CenterVertically) { Switch(learning, { learning = it }); Spacer(Modifier.width(8.dp)); Text("从本地记录学习偏好") }

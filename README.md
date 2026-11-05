@@ -6,7 +6,7 @@
 
 **当前为开发预览，尚未完成正式发行验收。** 现有113条原型餐食与轻量规则，不宣称已优于随机或大模型。构建、设备和效果验证状态见[总体计划](docs/总体计划.md)与[验证记录](docs/验证与发布.md#本轮实际证据)。
 
-已通过20项单元测试、4项Android 10模拟器设备测试及开发APK构建，Lint无错误。真机性能、真实模型服务与真人效果尚未验证。
+已通过20项单元测试、8项Android 10模拟器设备测试（另覆盖2倍字号窄屏和横屏）及开发APK构建，Lint无错误。真机性能、真实模型服务与真人效果尚未验证。
 
 [实际首页截图](docs/images/android-home.png) · [实际推荐截图](docs/images/android-recommendation.png) · [餐食页](docs/images/android-meal.png) · [设置页](docs/images/android-settings.png)
 

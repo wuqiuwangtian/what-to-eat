@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-04",
+  "date": "2026-11-05",
   "environment": "WSL Linux, Temurin JDK17, Android API29 x86_64 emulator (Pixel 2 profile)",
   "command": "./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:connectedDebugAndroidTest :app:lintDebug --console=plain",
   "result": "BUILD SUCCESSFUL",
@@ -26,8 +26,8 @@
       "skipped": "0"
     },
     {
-      "name": "org.whattoeat.app.SmokeTest",
-      "tests": "4",
+      "name": "org.whattoeat.app.InteractionTest",
+      "tests": "8",
       "failures": "0",
       "errors": "0",
       "skipped": "0"
@@ -37,7 +37,7 @@
     "GradleDependency": 10,
     "UseKtx": 4
   },
-  "apk_sha256": "aacffcfa916d76586752a1cffb9a41c9dfa8518169638636517a690ca6c23562",
+  "apk_sha256": "a8a26cf0fe4bed6fe6f55b2054bc0382c4c450705304dc733dd0f6e85dd74306",
   "not_verified": [
     "physical devices and performance percentiles",
     "real provider API credentials",
@@ -48,6 +48,28 @@
     "baseline": "https://github.com/wuqiuwangtian/what-to-eat/actions/runs/41835353458",
     "baseline_result": "success",
     "ui_revision": "0c40a8d",
-    "ui_run": "https://github.com/wuqiuwangtian/what-to-eat/actions/runs/41836279544"
-  }
+    "ui_run": "https://github.com/wuqiuwangtian/what-to-eat/actions/runs/41836279544",
+    "m2_workflow": "https://github.com/wuqiuwangtian/what-to-eat/actions/workflows/check.yml"
+  },
+  "device_profiles": [
+    {
+      "font_scale": 1.0,
+      "screen_px": "1080x1920",
+      "distinct_tests": 8,
+      "result": "passed"
+    },
+    {
+      "font_scale": 2.0,
+      "screen_px": "840x1600",
+      "distinct_tests": 8,
+      "result": "passed"
+    },
+    {
+      "font_scale": 2.0,
+      "screen_px": "1600x840",
+      "distinct_tests": 8,
+      "result": "passed"
+    }
+  ],
+  "startup_display_probe": "startup-emulator.json"
 }

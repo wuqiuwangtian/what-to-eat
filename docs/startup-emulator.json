@@ -1,0 +1,113 @@
+{
+  "measured_at_utc": "2026-11-05T11:25:54Z",
+  "method": "am force-stop then am start -W; TotalTime; nearest-rank percentiles",
+  "measurement": "Android-reported LaunchState=COLD Activity TotalTime; OS caches retained",
+  "limitation": "Not time-to-interactive, not a physical-device performance acceptance result.",
+  "build": "development APK; debug instrumentation not attached",
+  "device": {
+    "serial": "emulator-5554",
+    "model": "Android SDK built for x86_64",
+    "sdk": "29",
+    "fingerprint": "Android/sdk_phone_x86_64/generic_x86_64:10/QSR1.210820.001/7663313:userdebug/test-keys",
+    "font_scale": "1.0"
+  },
+  "samples_ms": [
+    789,
+    778,
+    717,
+    694,
+    756,
+    752,
+    855,
+    788,
+    779,
+    710,
+    760,
+    815,
+    707,
+    783,
+    779,
+    691,
+    737,
+    740,
+    726,
+    759
+  ],
+  "launch_states": [
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD",
+    "COLD"
+  ],
+  "rejected_attempts": [
+    {
+      "attempt": 1,
+      "state": "COLD",
+      "activity": "com.android.launcher3/.Launcher"
+    },
+    {
+      "attempt": 3,
+      "state": "COLD",
+      "activity": "com.android.launcher3/.Launcher"
+    },
+    {
+      "attempt": 7,
+      "state": "COLD",
+      "activity": "com.android.launcher3/.Launcher"
+    },
+    {
+      "attempt": 10,
+      "state": "COLD",
+      "activity": "com.android.launcher3/.Launcher"
+    },
+    {
+      "attempt": 12,
+      "state": "COLD",
+      "activity": "com.android.launcher3/.Launcher"
+    },
+    {
+      "attempt": 16,
+      "state": "COLD",
+      "activity": "com.android.launcher3/.Launcher"
+    },
+    {
+      "attempt": 20,
+      "state": "COLD",
+      "activity": "com.android.launcher3/.Launcher"
+    },
+    {
+      "attempt": 26,
+      "state": "COLD",
+      "activity": "com.android.launcher3/.Launcher"
+    },
+    {
+      "attempt": 28,
+      "state": "COLD",
+      "activity": "com.android.launcher3/.Launcher"
+    },
+    {
+      "attempt": 29,
+      "state": "COLD",
+      "activity": "com.android.launcher3/.Launcher"
+    }
+  ],
+  "p50_ms": 756,
+  "p95_ms": 815,
+  "apk_sha256": "a8a26cf0fe4bed6fe6f55b2054bc0382c4c450705304dc733dd0f6e85dd74306"
+}
