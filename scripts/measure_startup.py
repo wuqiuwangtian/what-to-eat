@@ -47,7 +47,7 @@ for attempt in range(args.samples * 3):
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         activities = adb('shell', 'dumpsys', 'activity', 'activities')
-        if re.search(r'mResumedActivity:.*org\.whattoeat\.app/\.MainActivity', activities):
+        if re.search(r'(?:mResumedActivity:|topResumedActivity=).*org\.whattoeat\.app/\.MainActivity', activities):
             break
         time.sleep(.1)
     else:
@@ -64,7 +64,7 @@ result = {
     'measured_at_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
     'method': 'am force-stop then am start -W; TotalTime; nearest-rank percentiles',
     'measurement': 'Android-reported LaunchState=COLD Activity TotalTime; OS caches retained',
-    'limitation': 'Not time-to-interactive, not a physical-device performance acceptance result.',
+    'limitation': 'Activity display proxy only; not time-to-interactive or recommendation/switch latency acceptance.',
     'build': 'development APK; debug instrumentation not attached',
     'device': {'serial': args.serial, 'model': adb('shell', 'getprop', 'ro.product.model'),
                'sdk': adb('shell', 'getprop', 'ro.build.version.sdk'),

@@ -1,7 +1,7 @@
 {
   "date": "2026-11-05",
-  "environment": "WSL Linux, Temurin JDK17, Android API29 x86_64 emulator (Pixel 2 profile)",
-  "command": "./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:connectedDebugAndroidTest :app:lintDebug --console=plain",
+  "environment": "WSL build; Android API29 emulator baseline; HONOR ELI-AN00 Android16 non-destructive physical subset",
+  "command": "./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --console=plain",
   "result": "BUILD SUCCESSFUL",
   "tests": [
     {
@@ -37,9 +37,10 @@
     "GradleDependency": 10,
     "UseKtx": 4
   },
-  "apk_sha256": "a8a26cf0fe4bed6fe6f55b2054bc0382c4c450705304dc733dd0f6e85dd74306",
+  "apk_sha256": "72b1c7a5bceacdf2a7cced145d5daafcfe830987056e70388bd3517f1a53a8aa",
   "not_verified": [
-    "physical devices and performance percentiles",
+    "second physical device and full physical-device acceptance",
+    "time-to-interactive and recommendation/switch P95",
     "real provider API credentials",
     "human recommendation effectiveness",
     "formal release and upgrade signing"
@@ -71,5 +72,7 @@
       "result": "passed"
     }
   ],
-  "startup_display_probe": "startup-emulator.json"
+  "startup_display_probe": "startup-emulator.json",
+  "emulator_baseline_apk_sha256": "a8a26cf0fe4bed6fe6f55b2054bc0382c4c450705304dc733dd0f6e85dd74306",
+  "physical_validation": "physical-device-validation.json"
 }

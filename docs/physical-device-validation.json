@@ -1,0 +1,39 @@
+{
+  "device_alias": "physical-1",
+  "model": "ELI-AN00",
+  "android": "16",
+  "sdk": "36",
+  "font_scale": "1.0",
+  "screen": "Physical size: 1200x2664",
+  "density": "Physical density: 520",
+  "apk_sha256": "72b1c7a5bceacdf2a7cced145d5daafcfe830987056e70388bd3517f1a53a8aa",
+  "date": "2026-11-05",
+  "build": "0.1.0-dev, debug",
+  "result": "OK (5 tests)",
+  "duration_seconds": 12.387,
+  "selected_methods": [
+    "org.whattoeat.app.SmokeTest#offlineRecommendationAndSwitchNeedNoOnboarding",
+    "org.whattoeat.app.SmokeTest#plannedMealStaysPlannedInHistory",
+    "org.whattoeat.app.InteractionTest#comparisonDoesNotCreatePreferenceUntilTheUserChooses",
+    "org.whattoeat.app.InteractionTest#systemBackReturnsHomeAndKeepsTheMealDraft",
+    "org.whattoeat.app.InteractionTest#recreatingActivityKeepsTheUsersCorrectionToDetectedFoods"
+  ],
+  "transport": "Windows native ADB, localhost port 5037, invoked from WSL",
+  "global_font_settings_changed": false,
+  "application_orientation_restored": true,
+  "skipped_on_personal_phone": [
+    "clear-all-data scenario",
+    "vault storage scenario"
+  ],
+  "screenshots": "Compose root only; no phone status bar or other apps",
+  "screenshot_check": "OK (1 test), same non-destructive recommendation method",
+  "startup_display_probe": "startup-physical-1.json",
+  "limitations": [
+    "One physical device only",
+    "Current system font scale only",
+    "Activity display time is not time-to-interactive",
+    "Recommendation and switch P95 not measured",
+    "No real cloud-provider validation or human effectiveness experiment"
+  ],
+  "apk_size_bytes": 26911786
+}

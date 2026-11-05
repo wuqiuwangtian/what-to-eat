@@ -125,8 +125,7 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
             Column(Modifier.fillMaxWidth().heightIn(min = mainHeight).padding(vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 state.decision?.let { decision ->
-                    Text(decision.food.name, Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                        fontSize = 30.sp, lineHeight = 42.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                    MealTitle(decision.food.name)
                     Spacer(Modifier.height(12.dp))
                     TextButton(onClick = { detailOpen = true },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("为什么推荐") }
@@ -172,6 +171,19 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
                 Spacer(Modifier.height(16.dp))
             }
         }
+    }
+}
+
+/** 在餐食组成之间分行，避免将“米饭”等词拆成孤立单字。 */
+@Composable
+private fun MealTitle(name: String) {
+    val parts = name.split("配", limit = 2)
+    Text(parts.first(), Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+        fontSize = 30.sp, lineHeight = 42.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+    if (parts.size == 2) {
+        Spacer(Modifier.height(8.dp))
+        Text("配${parts[1]}", Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            fontSize = 22.sp, lineHeight = 32.sp, textAlign = TextAlign.Center)
     }
 }
 
