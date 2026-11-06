@@ -11,7 +11,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** 只操作独立性能包；每轮测量前在区间外重建1000条合成历史。 */
+/** 只操作独立性能包；冷启动只读同一1000条历史，热操作每轮在区间外重建。 */
 @OptIn(ExperimentalMetricApi::class)
 @RunWith(AndroidJUnit4::class)
 class MealBenchmark {
@@ -20,37 +20,38 @@ class MealBenchmark {
     private val iterations get() = (InstrumentationRegistry.getArguments().getString("iterations")?.toIntOrNull() ?: 20).also {
         require(it in 3..50)
     }
-    private fun ready() {
-        check(device.wait(Until.hasObject(By.res("recommendButton")), 10_000)) { "Recommendation screen not ready; foreground=${device.currentPackageName}; pid=${device.executeShellCommand("pidof $PACKAGE")}" }
+    private fun ready(launchOutput: String = "") {
+        check(device.wait(Until.hasObject(By.text("吃什么？")), 10_000)) { "Initial recommendation label not ready; launch=$launchOutput" }
+        check(device.wait(Until.hasObject(By.res("recommendButton").enabled(true)), 10_000)) { "Recommendation screen not ready; foreground=${device.currentPackageName}; pid=${device.executeShellCommand("pidof $PACKAGE")}; launch=$launchOutput" }
         device.waitForIdle()
     }
-    private fun seed() {
+    private fun launch(seedFixture: Boolean) {
         device.wakeUp()
-        device.executeShellCommand("am force-stop $PACKAGE")
-        val result = device.executeShellCommand("am start -W -f 0x10008000 -n $PACKAGE/org.whattoeat.app.MainActivity --ez benchmark_seed true")
-        check(!result.contains("Error")) { "Fixture setup failed" }
-        ready()
+        val result = device.executeShellCommand(
+            "am start -W -f 0x10008000 -n $PACKAGE/org.whattoeat.app.MainActivity --ez benchmark_seed $seedFixture"
+        )
+        check(!result.contains("Error")) { "Launch failed: $result" }
+        ready(result)
     }
+    private fun seed() = launch(true)
     private fun clickAndWait(id: Int) {
-        val button = device.wait(Until.findObject(By.res("recommendButton")), 10_000)
+        val button = device.wait(Until.findObject(By.res("recommendButton").enabled(true)), 10_000)
         checkNotNull(button) { "Recommendation button unavailable; foreground=${device.currentPackageName}" }.click()
         check(device.wait(Until.hasObject(By.res("recommendationResult-$id")), 10_000)) { "Recommendation did not appear" }
         device.waitForIdle()
     }
-    @Test fun startup() = benchmark.measureRepeated(
-        packageName = PACKAGE,
-        metrics = listOf(StartupTimingMetric()),
-        iterations = iterations,
-        compilationMode = CompilationMode.None(),
-        startupMode = StartupMode.COLD,
-        setupBlock = { seed(); pressHome() },
-    ) {
-        // am -W在部分系统会早于目标进程返回；等待目标UI，由StartupTimingMetric从trace提取耗时。
-        val result = device.executeShellCommand(
-            "am start -W -f 0x10008000 -n $PACKAGE/org.whattoeat.app.MainActivity --ez benchmark_seed false"
-        )
-        check(!result.contains("Error")) { "Cold launch failed" }
-        ready()
+    @Test fun startup() {
+        // 冷启动不写历史，只需预置一次；每轮不再额外强停准备进程。
+        seed()
+        benchmark.measureRepeated(
+            packageName = PACKAGE,
+            metrics = listOf(StartupTimingMetric()),
+            iterations = iterations,
+            compilationMode = CompilationMode.None(),
+            startupMode = StartupMode.COLD,
+            // 保证ProfileInstaller可接收清理shader广播，再由库停止进程进行冷启动。
+            setupBlock = { launch(false); pressHome() },
+        ) { launch(false) }
     }
 
     @Test fun firstRecommendation() = benchmark.measureRepeated(

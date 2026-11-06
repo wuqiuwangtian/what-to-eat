@@ -114,7 +114,7 @@
     "android_lint": "passed",
     "debug_apk_sha256": "9f02325f671baf42bf746fa41878b5b6ee7cea2a45e86c448601dfe1fed7ee5e",
     "benchmark_apk_sha256": "a21b95a8af4afbd60ce9acd32b2e5befa911b49786a2374e449a404d8efc33b1",
-    "benchmark_runner_apk_sha256": "4b5e65ac2b6cd1f9f089333bcc0e5451a291af3cb648a145e280aeaa516d455f",
+    "benchmark_runner_apk_sha256": "7d07d3a3057216b04c505fad0ab0404eb1c422417add12d6051712a8dcc6bdce",
     "emulator_interaction": {
       "sdk": 35,
       "tests": 8,
@@ -140,15 +140,23 @@
         ]
       },
       "raw_sha256": "275673c3cbfd2c3025de590413105fab38282a21eb2a597312b0b97226892f0f",
-      "acceptance_summary_rejected": true
+      "acceptance_summary_rejected": true,
+      "source_revision": "d375924"
     },
-    "physical_performance_acceptance": "not verified; earlier whole runs failed; background-scoring build reinstall timed out while system installer was foreground",
-    "physical_current_build_interaction": "not rerun; previous physical subset evidence refers to earlier APK",
+    "physical_performance_acceptance": {
+      "result": "OK (3 tests), 20 iterations per scenario; within defined application intervals",
+      "summary": "macrobenchmark-physical-1.json",
+      "limitations": "one phone; hot traces exclude physical input dispatch and display scanout"
+    },
+    "physical_current_build_interaction": {
+      "result": "OK (5 tests)",
+      "record": "physical-device-validation.json#current_build_validation"
+    },
     "known_limits": [
       "One physical phone only",
-      "No verified physical latency gain for the background-scoring build",
       "No real model credentials or human study",
-      "No formal signed release"
+      "No formal signed release",
+      "No complete physical touch-to-display or other-phone latency measurement"
     ],
     "ui_review": {
       "sdk": 35,
@@ -161,6 +169,67 @@
         "images/current-landscape.png"
       ],
       "assessment": "No additional UI wording; title and accompaniment remain separate; landscape permits vertical scrolling"
+    },
+    "offline_validation": [
+      {
+        "sdk": 29,
+        "original_network_settings": {
+          "wifi_on": "1",
+          "mobile_data": "1"
+        },
+        "result": "passed",
+        "active_default_network_during_test": "none",
+        "interaction_tests": "OK (5 tests)",
+        "export": {
+          "path": "Android system document picker to Downloads; unique synthetic-data file",
+          "format_version": 1,
+          "event_count": 6,
+          "planned_event_present": true,
+          "model_configuration_present": false
+        },
+        "restored_network_settings": {
+          "wifi_on": "1",
+          "mobile_data": "1"
+        },
+        "network_settings_restored": true,
+        "runner": "scripts/check_offline_emulator.py",
+        "export_sha256": "881586545b4f737e00ba3f5b95a2075e796c534183e3680cd613e32d0b927e4e"
+      },
+      {
+        "sdk": 35,
+        "original_network_settings": {
+          "wifi_on": "1",
+          "mobile_data": "1"
+        },
+        "result": "passed",
+        "active_default_network_during_test": "none",
+        "interaction_tests": "OK (5 tests)",
+        "export": {
+          "path": "Android system document picker to Downloads; unique synthetic-data file",
+          "format_version": 1,
+          "event_count": 8,
+          "planned_event_present": true,
+          "model_configuration_present": false
+        },
+        "restored_network_settings": {
+          "wifi_on": "1",
+          "mobile_data": "1"
+        },
+        "network_settings_restored": true,
+        "runner": "temporary validation program; same workflow; API29 repository CLI independently verified",
+        "export_sha256": "e5ce63af7742c6447390492567ae2a826e7155e14de7b4747c2ab5cf23f83e91"
+      }
+    ],
+    "physical_macrobenchmark_smoke": {
+      "device_alias": "physical-1",
+      "sdk": 36,
+      "iterations_per_scenario": 3,
+      "scenarios": 3,
+      "result": "OK (3 tests)",
+      "acceptance_summary_generated": false,
+      "target_apk_sha256": "a21b95a8af4afbd60ce9acd32b2e5befa911b49786a2374e449a404d8efc33b1",
+      "runner_apk_sha256": "7d07d3a3057216b04c505fad0ab0404eb1c422417add12d6051712a8dcc6bdce",
+      "source_sha256": "f9e10440c4c678059fb645b434c045b97cb5dd0877bcf43df5c19ea012d388ce"
     }
   }
 }

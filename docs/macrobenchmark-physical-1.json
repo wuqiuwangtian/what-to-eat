@@ -1,0 +1,122 @@
+{
+  "format_version": 1,
+  "device": {
+    "model": "ELI-AN00",
+    "sdk": 36
+  },
+  "compilation_mode": "run-from-apk",
+  "percentile_method": "nearest rank",
+  "fixture": "1000 synthetic events; cold fixture prepared once and read-only; hot fixture reset outside each iteration",
+  "definitions": {
+    "startup": "Android StartupTimingMetric TTFD; ready when local settings and Room events are loaded",
+    "recommendation": "app click callback to second frame boundary after result composition"
+  },
+  "limitations": [
+    "One phone and one compilation mode; not a universal Android performance claim",
+    "Hot-path trace excludes physical touch dispatch and display scanout",
+    "Frame overrun is a separate frame distribution, not request latency"
+  ],
+  "results": {
+    "startup": {
+      "metric": "timeToFullDisplayMs",
+      "samples_ms": [
+        460.926667,
+        446.115573,
+        514.326302,
+        444.677448,
+        447.149531,
+        494.81802,
+        459.004583,
+        457.44651,
+        471.613906,
+        455.31,
+        444.3975,
+        490.860209,
+        458.487344,
+        443.435417,
+        466.705625,
+        493.059843,
+        465.348958,
+        458.268125,
+        457.186301,
+        486.392188
+      ],
+      "sample_count": 20,
+      "p50_ms": 458.487344,
+      "p95_ms": 494.81802,
+      "max_ms": 514.326302,
+      "target_ms": 2000,
+      "within_defined_target": true
+    },
+    "firstRecommendation": {
+      "metric": "meal.recommendSumMs",
+      "samples_ms": [
+        173.160156,
+        157.414948,
+        136.016823,
+        144.599375,
+        124.065521,
+        119.523437,
+        156.253645,
+        129.203437,
+        126.79974,
+        118.926614,
+        129.363646,
+        130.680312,
+        119.559167,
+        131.420312,
+        123.964895,
+        138.679688,
+        119.322032,
+        116.681145,
+        117.653177,
+        128.829583
+      ],
+      "sample_count": 20,
+      "p50_ms": 128.829583,
+      "p95_ms": 157.414948,
+      "max_ms": 173.160156,
+      "target_ms": 500,
+      "within_defined_target": true,
+      "frame_overrun_p95_ms": 11.720599350000008
+    },
+    "switchRecommendation": {
+      "metric": "meal.switchSumMs",
+      "samples_ms": [
+        134.53224,
+        125.080572,
+        113.776042,
+        132.154218,
+        111.594219,
+        105.398229,
+        104.544532,
+        106.141354,
+        123.008229,
+        99.53901,
+        122.258854,
+        112.704792,
+        109.77802,
+        108.04302,
+        108.415781,
+        121.666719,
+        96.452344,
+        99.889635,
+        97.597031,
+        99.781458
+      ],
+      "sample_count": 20,
+      "p50_ms": 108.415781,
+      "p95_ms": 132.154218,
+      "max_ms": 134.53224,
+      "target_ms": 200,
+      "within_defined_target": true,
+      "frame_overrun_p95_ms": 5.546391999999992
+    }
+  },
+  "source_sha256": "43d723ac26633b78ad4e4a41dc9648b669a140c86f9aaddc8f2581ed9379a415",
+  "target_apk_sha256": "a21b95a8af4afbd60ce9acd32b2e5befa911b49786a2374e449a404d8efc33b1",
+  "runner_apk_sha256": "7d07d3a3057216b04c505fad0ab0404eb1c422417add12d6051712a8dcc6bdce",
+  "date": "2026-11-06",
+  "target_source_revision": "d375924",
+  "benchmark_runner_source_sha256": "504c67843507c9577037b8530dafb2488a6edd5c90b2249baffa9398e2d79829"
+}

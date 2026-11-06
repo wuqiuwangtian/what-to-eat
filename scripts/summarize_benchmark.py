@@ -57,7 +57,7 @@ def summarize(raw, minimum=20):
         'device': {'model': build.get('model'), 'sdk': build.get('version', {}).get('sdk')},
         'compilation_mode': context.get('compilationMode'),
         'percentile_method': 'nearest rank',
-        'fixture': '1000 synthetic events reset outside every measured iteration',
+        'fixture': '1000 synthetic events; cold fixture prepared once and read-only; hot fixture reset outside each iteration',
         'definitions': {
             'startup': 'Android StartupTimingMetric TTFD; ready when local settings and Room events are loaded',
             'recommendation': 'app click callback to second frame boundary after result composition',

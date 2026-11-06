@@ -35,5 +35,41 @@
     "Recommendation and switch P95 not measured",
     "No real cloud-provider validation or human effectiveness experiment"
   ],
-  "apk_size_bytes": 26911786
+  "apk_size_bytes": 26911786,
+  "current_build_validation": {
+    "device_alias": "physical-1",
+    "model": "ELI-AN00",
+    "android": "16",
+    "sdk": "36",
+    "font_scale": "1.0",
+    "screen": "Physical size: 1200x2664",
+    "density": "Physical density: 520",
+    "apk_sha256": "9f02325f671baf42bf746fa41878b5b6ee7cea2a45e86c448601dfe1fed7ee5e",
+    "date": "2026-11-06",
+    "source_revision": "d375924",
+    "result": "OK (5 tests)",
+    "duration_seconds": 13.461,
+    "selected_methods": [
+      "org.whattoeat.app.SmokeTest#offlineRecommendationAndSwitchNeedNoOnboarding",
+      "org.whattoeat.app.SmokeTest#plannedMealStaysPlannedInHistory",
+      "org.whattoeat.app.InteractionTest#comparisonDoesNotCreatePreferenceUntilTheUserChooses",
+      "org.whattoeat.app.InteractionTest#systemBackReturnsHomeAndKeepsTheMealDraft",
+      "org.whattoeat.app.InteractionTest#recreatingActivityKeepsTheUsersCorrectionToDetectedFoods"
+    ],
+    "ordinary_app_data_cleared": false,
+    "global_font_or_network_settings_changed": false,
+    "application_orientation_restored": true,
+    "screenshots": [
+      "images/physical-current-home.png",
+      "images/physical-current-recommendation.png",
+      "images/physical-current-landscape.png"
+    ],
+    "synthetic_plan_and_comparison_rows": "retained; no personal data deleted",
+    "removed_packages": [
+      "org.whattoeat.app.test",
+      "org.whattoeat.app.benchmark",
+      "org.whattoeat.benchmark"
+    ],
+    "performance_summary": "macrobenchmark-physical-1.json"
+  }
 }
