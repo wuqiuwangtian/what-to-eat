@@ -74,5 +74,93 @@
   ],
   "startup_display_probe": "startup-emulator.json",
   "emulator_baseline_apk_sha256": "a8a26cf0fe4bed6fe6f55b2054bc0382c4c450705304dc733dd0f6e85dd74306",
-  "physical_validation": "physical-device-validation.json"
+  "physical_validation": "physical-device-validation.json",
+  "current_revision_checks": {
+    "date": "2026-11-06",
+    "jvm_tests": [
+      {
+        "name": "org.whattoeat.core.RecommenderTest",
+        "tests": "12",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.app.ModelContractTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.app.ProviderTransportTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.app.PresentationTraceTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      }
+    ],
+    "python_summary_tests": {
+      "tests": 5,
+      "result": "passed"
+    },
+    "android_lint": "passed",
+    "debug_apk_sha256": "9f02325f671baf42bf746fa41878b5b6ee7cea2a45e86c448601dfe1fed7ee5e",
+    "benchmark_apk_sha256": "a21b95a8af4afbd60ce9acd32b2e5befa911b49786a2374e449a404d8efc33b1",
+    "benchmark_runner_apk_sha256": "4b5e65ac2b6cd1f9f089333bcc0e5451a291af3cb648a145e280aeaa516d455f",
+    "emulator_interaction": {
+      "sdk": 35,
+      "tests": 8,
+      "result": "passed",
+      "command": "ANDROID_SERIAL=YOUR_EMULATOR_SERIAL ./gradlew :app:connectedDebugAndroidTest --console=plain"
+    },
+    "macrobenchmark_smoke": {
+      "sdk": 35,
+      "scenarios": 3,
+      "iterations_per_scenario": 3,
+      "result": "OK (3 tests)",
+      "suppressed_error": "EMULATOR (smoke only; not acceptance)",
+      "completed_trace_counts": {
+        "firstRecommendation": [
+          1,
+          1,
+          1
+        ],
+        "switchRecommendation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "raw_sha256": "275673c3cbfd2c3025de590413105fab38282a21eb2a597312b0b97226892f0f",
+      "acceptance_summary_rejected": true
+    },
+    "physical_performance_acceptance": "not verified; earlier whole runs failed; background-scoring build reinstall timed out while system installer was foreground",
+    "physical_current_build_interaction": "not rerun; previous physical subset evidence refers to earlier APK",
+    "known_limits": [
+      "One physical phone only",
+      "No verified physical latency gain for the background-scoring build",
+      "No real model credentials or human study",
+      "No formal signed release"
+    ],
+    "ui_review": {
+      "sdk": 35,
+      "portrait_width_dp": 320,
+      "font_scale": 1.0,
+      "result": "OK (1 test), screenshot flag enabled",
+      "screenshots": [
+        "images/current-home.png",
+        "images/current-recommendation.png",
+        "images/current-landscape.png"
+      ],
+      "assessment": "No additional UI wording; title and accompaniment remain separate; landscape permits vertical scrolling"
+    }
+  }
 }

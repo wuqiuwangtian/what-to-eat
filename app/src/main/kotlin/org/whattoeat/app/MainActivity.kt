@@ -3,6 +3,7 @@ package org.whattoeat.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.ReportDrawnWhen
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +17,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +37,9 @@ import java.time.format.DateTimeFormatter
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (BuildConfig.BUILD_TYPE == "benchmark" && intent.getBooleanExtra("benchmark_seed", false)) {
+            seedBenchmarkHistory(this)
+        }
         window.statusBarColor = android.graphics.Color.WHITE
         window.navigationBarColor = android.graphics.Color.WHITE
         WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -66,10 +73,18 @@ private fun parseTime(value: String): Instant? = runCatching {
 @Composable
 private fun App(vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    ReportDrawnWhen { !state.loading }
+    LaunchedEffect(state.presentationId) {
+        if (state.presentationId > 0) {
+            withFrameNanos { }
+            withFrameNanos { }
+            vm.recommendationPresented(state.presentationId)
+        }
+    }
     key(state.dataGeneration) { AppContent(state, vm) }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 private fun AppContent(state: UiState, vm: MainViewModel) {
     var page by rememberSaveable { mutableStateOf("home") }
@@ -81,7 +96,7 @@ private fun AppContent(state: UiState, vm: MainViewModel) {
         if (state.notice.isNotBlank()) snackbar.showSnackbar(state.notice)
     }
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.fillMaxSize().padding(padding).semantics { testTagsAsResourceId = true }, contentAlignment = Alignment.TopCenter) {
             Column(Modifier.widthIn(max = 580.dp).fillMaxSize().padding(horizontal = 24.dp)) {
                 FlowRow(Modifier.fillMaxWidth().heightIn(min = 56.dp),
                     horizontalArrangement = if (page == "home") Arrangement.End else Arrangement.SpaceBetween) {
@@ -125,14 +140,16 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
             Column(Modifier.fillMaxWidth().heightIn(min = mainHeight).padding(vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 state.decision?.let { decision ->
-                    MealTitle(decision.food.name)
+                    Column(Modifier.testTag("recommendationResult-${state.presentationId}"), horizontalAlignment = Alignment.CenterHorizontally) {
+                        MealTitle(decision.food.name)
+                    }
                     Spacer(Modifier.height(12.dp))
                     TextButton(onClick = { detailOpen = true },
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("为什么推荐") }
                     Spacer(Modifier.height(32.dp))
                 }
                 Button(onClick = vm::recommend, enabled = !state.busy,
-                    shape = RoundedCornerShape(16.dp), modifier = Modifier.widthIn(min = 220.dp).heightIn(min = 56.dp)) {
+                    shape = RoundedCornerShape(16.dp), modifier = Modifier.testTag("recommendButton").widthIn(min = 220.dp).heightIn(min = 56.dp)) {
                     Text(if (state.decision == null) "吃什么？" else "换一个", fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 }
                 state.decision?.let { decision ->

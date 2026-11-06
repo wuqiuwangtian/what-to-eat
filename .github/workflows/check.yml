@@ -17,6 +17,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: ./gradlew -PcoreOnly :core:test :experiments:run --console=plain
       - run: python3 scripts/check_repository.py
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
   android:
     runs-on: ubuntu-latest
     steps:
@@ -32,6 +33,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest --console=plain
+      - run: ./gradlew -Pbenchmarks :app:assembleBenchmark :benchmark:assembleBenchmark --console=plain
       - uses: actions/upload-artifact@v4
         with:
           name: development-apk

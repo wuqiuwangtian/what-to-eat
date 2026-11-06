@@ -6,7 +6,7 @@
 
 **当前为开发预览，尚未完成正式发行验收。** 现有113条原型餐食与轻量规则，不宣称已优于随机或大模型。构建、设备和效果验证状态见[总体计划](docs/总体计划.md)与[验证记录](docs/验证与发布.md#本轮实际证据)。
 
-已通过20项单元测试、Android 10模拟器基线8项设备测试，以及荣耀Android 16真机上的5项非清空交互测试。开发APK构建及Lint通过；第二台真机、到可操作及推荐延迟、真实模型服务与真人效果尚未验证。
+已通过22项JVM单元测试、Android 10模拟器基线8项设备测试，以及荣耀Android 16真机上的5项非清空交互测试。开发APK构建及Lint通过；仅覆盖一台真机，真实模型服务与真人效果尚未验证。性能的测量定义、结果与限制统一见[验证记录](docs/验证与发布.md#真机macrobenchmark复现)。
 
 [真机首页](docs/images/physical-home.png) · [真机推荐](docs/images/physical-recommendation.png) · [真机横屏](docs/images/physical-landscape.png) · [餐食页（模拟器）](docs/images/android-meal.png) · [设置页（模拟器）](docs/images/android-settings.png)
 
@@ -47,6 +47,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 - `core/`：纯Kotlin推荐、餐食匹配、113条自编典型配方标签及行为测试。
 - `app/`：Compose界面、Room事件、Keystore密钥与API适配器。
 - `experiments/`：固定种子的合成情境检查；不是用户效果试验。
+- `benchmark/`：按需启用的隔离真机性能测量器；`scripts/`提供运行和去除私有字段的摘要工具。
 - [总体计划与状态](docs/总体计划.md)：有效范围、阶段门槛与下一项工作。
 - [验证与发布](docs/验证与发布.md)：设备验收、研究协议和正式发行清单。
 - [初版需求](docs/初版需求报告.md)、[研究资料](docs/研究与验证计划.md)、[同类项目调研](docs/GitHub开源项目调研.md)：早期背景及来源。

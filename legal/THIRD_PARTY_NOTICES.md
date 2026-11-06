@@ -17,6 +17,7 @@ The application/build uses these upstream components under their own licenses:
 | JUnit 4 | https://github.com/junit-team/junit4 | EPL-1.0 | Test only |
 | Hamcrest | https://github.com/hamcrest/JavaHamcrest | BSD-3-Clause | Test only |
 | JSON-java | https://github.com/stleary/JSON-java | Public domain | JVM test only; Android uses platform org.json |
+| AndroidX Benchmark, ProfileInstaller, UI Automator and Perfetto tooling | https://android.googlesource.com/platform/frameworks/support/ | Apache-2.0; retain bundled upstream notices | Isolated benchmark/test only |
 | AndroidX Test | https://android.googlesource.com/platform/frameworks/testing/ | Apache-2.0 | Test APK only |
 
 All upstream trademarks and copyrights remain with their respective owners. Apache-2.0 text is included in Apache-2.0.txt. Retain upstream source headers, license and NOTICE resources when redistributing. This inventory separates runtime and test/build components; it is not a claim that all transitive artifacts have received a final release audit.

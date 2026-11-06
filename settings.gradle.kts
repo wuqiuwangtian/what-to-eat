@@ -7,4 +7,7 @@ dependencyResolutionManagement {
 }
 rootProject.name = "what-to-eat"
 include(":core", ":experiments")
-if (!providers.gradleProperty("coreOnly").isPresent) include(":app")
+if (!providers.gradleProperty("coreOnly").isPresent) {
+    include(":app")
+    if (providers.gradleProperty("benchmarks").isPresent) include(":benchmark")
+}

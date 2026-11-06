@@ -16,6 +16,7 @@ import java.util.UUID
 
 data class UiState(
     val dataGeneration: Int = 0,
+    val presentationId: Int = 0,
     val loading: Boolean = true,
     val busy: Boolean = false,
     val rows: List<EventRow> = emptyList(),
@@ -35,6 +36,7 @@ data class UiState(
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     val foods = Catalog.load()
     private val engine = Recommender()
+    private val presentation = PresentationTrace()
     private val analyzer = MealAnalyzer(foods)
     private val database = MealDatabase.open(application)
     private val settings = SettingsStore(application)
@@ -77,23 +79,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun recommend() = action {
         val before = mutable.value
-        val decision = engine.recommend(foods, history(), context(), before.strategy)
-        if (decision == null) {
-            mutable.update { it.copy(decision = null, notice = "没有符合当前限制的候选；请到设置检查限制，不会自动放宽。") }
-        } else {
-            if (decision.startsNewRound) shown.clear()
-            shown += decision.food.id
-            val detail = JSONObject().put("algorithmVersion", decision.algorithmVersion).put("strategy", decision.strategy.name)
-                .put("score", decision.score).put("factors", JSONObject(decision.factors))
-                .put("reasons", JSONArray(decision.reasons)).put("candidateCount", engine.eligible(foods, before.preferences).size).toString()
-            val rows = buildList {
-                before.decision?.let { add(row(EventType.SKIPPED, it.food)) }
-                add(row(EventType.SHOWN, decision.food, detail = detail).copy(source = "recommendation"))
+        val presentationId = presentation.begin(before.decision != null)
+        var awaitsFrame = false
+        try {
+            val events = history()
+            val request = context()
+            val decision = withContext(Dispatchers.Default) {
+                engine.recommend(foods, events, request, before.strategy)
             }
-            database.events().put(rows)
-            mutable.update { it.copy(decision = decision, notice = if (decision.startsNewRound) "这一轮都看过了，已开始新一轮。" else "") }
-        }
+            if (decision == null) {
+                mutable.update { it.copy(presentationId = presentationId, decision = null, notice = "没有符合当前限制的候选；请到设置检查限制，不会自动放宽。") }
+            } else {
+                if (decision.startsNewRound) shown.clear()
+                shown += decision.food.id
+                val detail = JSONObject().put("algorithmVersion", decision.algorithmVersion).put("strategy", decision.strategy.name)
+                    .put("score", decision.score).put("factors", JSONObject(decision.factors))
+                    .put("reasons", JSONArray(decision.reasons)).put("candidateCount", engine.eligible(foods, before.preferences).size).toString()
+                val rows = buildList {
+                    before.decision?.let { add(row(EventType.SKIPPED, it.food)) }
+                    add(row(EventType.SHOWN, decision.food, detail = detail).copy(source = "recommendation"))
+                }
+                database.events().put(rows)
+                mutable.update { it.copy(presentationId = presentationId, decision = decision, notice = if (decision.startsNewRound) "这一轮都看过了，已开始新一轮。" else "") }
+            }
+            awaitsFrame = true
+        } finally { if (!awaitsFrame) presentation.presented(presentationId) }
     }
+
+    fun recommendationPresented(id: Int) { presentation.presented(id) }
 
     fun feedback(type: EventType, food: Food) = action {
         require(type in setOf(EventType.PLANNED, EventType.EATEN, EventType.PREFERRED, EventType.DISLIKED, EventType.COMPARED))
@@ -166,6 +179,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         invalidate("已修改记录，画像将在后续推荐中重新计算。")
     }
     private fun invalidate(message: String) {
+        presentation.close()
         shown.clear()
         sessionId = UUID.randomUUID().toString()
         mutable.update { it.copy(decision = null, compared = null, benchmark = "", notice = message) }
@@ -203,6 +217,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         mutable.update { it.copy(notice = "已导出记录与设置，不含 API Key。导出文件可能包含个人饮食信息，请妥善保管。") }
     }
     fun clearAll() = action {
+        presentation.close()
         withContext(Dispatchers.IO) { settings.clear(); vault.clear() }
         database.events().clear()
         modelConfig = null
@@ -233,5 +248,5 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             finally { mutable.update { it.copy(busy = false) } }
         }
     }
-    override fun onCleared() { database.close(); super.onCleared() }
+    override fun onCleared() { presentation.close(); database.close(); super.onCleared() }
 }
