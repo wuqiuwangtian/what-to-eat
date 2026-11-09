@@ -16,6 +16,14 @@ PACKAGE = 'org.whattoeat.app'
 XML = '/data/local/tmp/what-to-eat-release-check.xml'
 
 
+
+def planned_cards(root):
+    parents = {child: parent for parent in root.iter() for child in parent}
+    return [[n.get('text') for n in parents[node].iter('node') if n.get('text')]
+            for node in root.iter('node')
+            if node.get('package') == PACKAGE and node.get('text', '').startswith('打算吃 · ')]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apk', required=True, type=Path, help='Unsigned release APK')
@@ -46,10 +54,11 @@ def main():
         adb('shell', 'uiautomator', 'dump', XML)
         return ET.fromstring(adb('shell', 'cat', XML))
 
-    def find(label):
+    def find(label, prefix_match=False):
         for _ in range(15):
             for node in window().iter('node'):
-                if node.get('package') == PACKAGE and node.get('text') == label and node.get('enabled') == 'true':
+                matches = node.get('text', '').startswith(label) if prefix_match else node.get('text') == label
+                if node.get('package') == PACKAGE and matches and node.get('enabled') == 'true':
                     return node
             time.sleep(.2)
         raise RuntimeError('Expected release UI unavailable')
@@ -82,15 +91,19 @@ def main():
                 raise RuntimeError('Release install failed')
             adb('shell', 'am', 'start', '-W', '-n', PACKAGE+'/.MainActivity')
             click('吃什么？'); click('就它了'); click('记录')
-            find('打算吃')
+            find('打算吃 · ', prefix_match=True)
             # 非debug包没有run-as：通过真实记录界面检查覆盖后仍存在计划。
-            before = [n.get('text') for n in window().iter('node') if n.get('package') == PACKAGE and n.get('text')]
+            before = planned_cards(window())
+            if len(before) != 1:
+                raise RuntimeError('Expected exactly one synthetic planned meal')
+            (output / 'before-private.json').write_text(json.dumps(before, ensure_ascii=False))
             adb('shell', 'am', 'force-stop', PACKAGE)
             if 'Success' not in adb('install', '-r', str(signed)):
                 raise RuntimeError('Same-certificate update failed')
             adb('shell', 'am', 'start', '-W', '-n', PACKAGE+'/.MainActivity')
-            click('记录'); find('打算吃')
-            after = [n.get('text') for n in window().iter('node') if n.get('package') == PACKAGE and n.get('text')]
+            click('记录'); find('打算吃 · ', prefix_match=True)
+            after = planned_cards(window())
+            (output / 'after-private.json').write_text(json.dumps(after, ensure_ascii=False))
             if before != after:
                 raise RuntimeError('History content changed after reinstall')
             report = {'result': 'passed', 'sdk': adb('shell', 'getprop', 'ro.build.version.sdk'), 'apk': actual,

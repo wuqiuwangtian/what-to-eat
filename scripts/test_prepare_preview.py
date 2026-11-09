@@ -73,3 +73,18 @@ class ApkMetadataTest(unittest.TestCase):
     def test_missing_package_or_minimum_is_not_guessed(self):
         with self.assertRaises(ValueError):
             parse_badging("package: name='org.whattoeat.app' versionCode='2' versionName='0.1.0-dev.2'")
+
+
+class ReleaseHistoryTest(unittest.TestCase):
+    def test_history_cards_exclude_transient_notice(self):
+        import xml.etree.ElementTree as ET
+        from check_release_emulator import planned_cards
+        root = ET.fromstring('<root><node><node package="org.whattoeat.app" text="鸡肉卷"/><node package="org.whattoeat.app" text="打算吃 · 2026-11-09 16:12"/></node><node text="已记录打算吃；尚未计入实际饮食。"/></root>')
+        self.assertEqual([['鸡肉卷', '打算吃 · 2026-11-09 16:12']], planned_cards(root))
+
+    def test_changed_meal_is_detected_even_when_type_is_unchanged(self):
+        import xml.etree.ElementTree as ET
+        from check_release_emulator import planned_cards
+        xml = '<root><node><node text="NAME"/><node package="org.whattoeat.app" text="打算吃 · TIME"/></node></root>'
+        self.assertNotEqual(planned_cards(ET.fromstring(xml.replace('NAME', '鸡肉卷'))),
+                            planned_cards(ET.fromstring(xml.replace('NAME', '牛肉饭'))))

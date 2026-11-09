@@ -6,7 +6,7 @@
 
 **当前为开发预览，尚未完成正式发行验收。** 现有113条原型餐食与轻量规则，不宣称已优于随机或大模型。构建、设备和效果验证状态见[总体计划](docs/总体计划.md)与[验证记录](docs/验证与发布.md#本轮实际证据)。
 
-当前开发预览`0.1.0-dev.2`已通过30项JVM测试、24项脚本测试、Android 10模拟器19项设备测试，以及荣耀Android 16真机6项非清空检查。开发APK构建及Lint通过；仅覆盖一台真机，真实模型服务与真人效果尚未验证。当前版已完成三项各20次真机性能测量，隔离试用包的三会话与系统导出检查通过；定义、结果与限制见[验证记录](docs/验证与发布.md#真机macrobenchmark复现)。
+当前开发预览`0.1.0-dev.2`已通过30项JVM测试、26项脚本测试、Android 10模拟器19项设备测试，以及荣耀Android 16真机6项非清空检查。开发APK构建及Lint通过；仅覆盖一台真机，真实模型服务与真人效果尚未验证。当前版已完成三项各20次真机性能测量，隔离试用包的三会话与系统导出检查通过；定义、结果与限制见[验证记录](docs/验证与发布.md#真机macrobenchmark复现)。
 
 [真机首页](docs/images/physical-current-home.png) · [真机推荐](docs/images/physical-current-recommendation.png) · [真机横屏](docs/images/physical-current-landscape.png) · [餐食页（模拟器）](docs/images/android-meal.png) · [设置页（模拟器）](docs/images/android-settings.png)
 
