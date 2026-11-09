@@ -71,5 +71,76 @@
       "org.whattoeat.benchmark"
     ],
     "performance_summary": "macrobenchmark-physical-1.json"
+  },
+  "latest_validation": "trial_preview",
+  "trial_preview": {
+    "source_revision": "cc91dfc",
+    "date": "2026-11-09",
+    "device_alias": "physical-1",
+    "model": "ELI-AN00",
+    "sdk": "36",
+    "schema_before": 2,
+    "schema_after": 2,
+    "original_event_count": 40,
+    "all_original_rows_unchanged": true,
+    "original_rows_sha256": "d1db86ffc50c78a396309c93e921cc220b397116d56be31382c313de8837cdab",
+    "trial_config_row_count": 0,
+    "automatic_enrollment": false,
+    "result": "OK (6 tests)",
+    "font_scale": "1.0",
+    "apk_sha256": "e66860c564f245ce610230984a18f38f3f68fd11a3cbc01c9b0388529c9a09ae",
+    "screenshots": "App roots and trial control panel only; no private preference fields or system notifications",
+    "data_cleared": false,
+    "initial_v1_to_v2_upgrade": {
+      "date": "2026-11-09",
+      "device_alias": "physical-1",
+      "model": "ELI-AN00",
+      "sdk": "36",
+      "schema_before": 1,
+      "schema_after": 2,
+      "original_event_count": 35,
+      "all_original_rows_unchanged": true,
+      "original_rows_sha256": "76402882ae420f97280972e33d9cd15635d56149a9513a48b79a1b7e5b0ceeda",
+      "trial_config_row_count": 0,
+      "automatic_enrollment": false,
+      "result": "OK (6 tests)",
+      "font_scale": "1.0",
+      "apk_sha256": "ab74b82fc4751d1aa3774b928c44b555caa94078bfe6634ed6b64962460c5e8e",
+      "screenshots": "App roots and trial control panel only; no private preference fields or system notifications",
+      "data_cleared": false
+    },
+    "isolated_synthetic_trial": {
+      "result": "passed",
+      "package": "org.whattoeat.app.benchmark",
+      "app_version": "0.1.0-dev.2",
+      "synthetic_sessions": 3,
+      "allocation_counts": {
+        "RANDOM": 1,
+        "SIMPLE": 1,
+        "PERSONALIZED": 1
+      },
+      "presentations_per_session": [
+        2,
+        1,
+        1
+      ],
+      "end_reasons": [
+        "ADOPTED",
+        "MANUAL",
+        "ADOPTED"
+      ],
+      "confirmed_eaten_inferred": false,
+      "export_via_system_document_picker": true,
+      "real_human_trial": false,
+      "ordinary_app_modified": false
+    },
+    "performance_summary": "macrobenchmark-2026-11-09.json",
+    "removed_packages": [
+      "org.whattoeat.app.test",
+      "org.whattoeat.app.benchmark",
+      "org.whattoeat.benchmark"
+    ],
+    "ordinary_app_retained": true,
+    "global_font_or_network_settings_changed": false
   }
 }

@@ -274,7 +274,7 @@
         "skipped": "0"
       }
     ],
-    "python_tests": 11,
+    "python_tests": 14,
     "emulator": {
       "sdk": 29,
       "result": "OK (19 tests)",
@@ -329,10 +329,37 @@
     "benchmark_runner_sha256": "7d07d3a3057216b04c505fad0ab0404eb1c422417add12d6051712a8dcc6bdce",
     "lint": "passed",
     "remaining": [
-      "Current build performance remeasurement pending",
-      "Physical active trial flow pending; ordinary app remains opted out",
+      "Trial-enabled latency; other devices and physical touch-to-pixel latency remain unverified",
       "Real provider credentials and human effectiveness",
       "300-item catalog review and formal signing/release"
-    ]
+    ],
+    "source_revision": "cc91dfc",
+    "source_ci": "https://github.com/wuqiuwangtian/what-to-eat/actions/runs/42569191810",
+    "isolated_phone_trial": {
+      "result": "passed",
+      "package": "org.whattoeat.app.benchmark",
+      "app_version": "0.1.0-dev.2",
+      "synthetic_sessions": 3,
+      "allocation_counts": {
+        "RANDOM": 1,
+        "SIMPLE": 1,
+        "PERSONALIZED": 1
+      },
+      "presentations_per_session": [
+        2,
+        1,
+        1
+      ],
+      "end_reasons": [
+        "ADOPTED",
+        "MANUAL",
+        "ADOPTED"
+      ],
+      "confirmed_eaten_inferred": false,
+      "export_via_system_document_picker": true,
+      "real_human_trial": false,
+      "ordinary_app_modified": false
+    },
+    "performance_summary": "macrobenchmark-2026-11-09.json"
   }
 }
