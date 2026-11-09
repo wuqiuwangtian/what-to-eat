@@ -18,7 +18,8 @@ import java.io.File
 
 /** 仅专用测试安装；个人手机不要执行包含清除试用数据的全套测试。 */
 class TrialInteractionTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val returningUser = ReturningUserRule()
+    @get:Rule(order = 1) val rule = createAndroidComposeRule<MainActivity>()
     private fun model() = ViewModelProvider(rule.activity)[MainViewModel::class.java]
     private fun waitIdle() = rule.waitUntil(15_000) { !model().state.value.loading && !model().state.value.busy }
     @Before fun resetTrial() {

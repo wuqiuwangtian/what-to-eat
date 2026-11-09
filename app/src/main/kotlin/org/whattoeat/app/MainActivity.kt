@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
         if (BuildConfig.BUILD_TYPE == "benchmark" && intent.getBooleanExtra("benchmark_seed", false)) {
             seedBenchmarkHistory(this)
         }
+        val showGuide = GuideStore(this).consumeFirstLaunch()
         window.statusBarColor = android.graphics.Color.WHITE
         window.navigationBarColor = android.graphics.Color.WHITE
         WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -71,7 +72,7 @@ class MainActivity : ComponentActivity() {
                 ),
                 shapes = Shapes(small = RoundedCornerShape(8.dp), medium = RoundedCornerShape(14.dp),
                     large = RoundedCornerShape(20.dp)),
-            ) { App() }
+            ) { App(showGuide = showGuide) }
         }
     }
 }
@@ -83,8 +84,9 @@ private fun parseTime(value: String): Instant? = runCatching {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun App(vm: MainViewModel = viewModel()) {
+private fun App(vm: MainViewModel = viewModel(), showGuide: Boolean = false) {
     val state by vm.state.collectAsStateWithLifecycle()
+    var initialGuideAvailable by rememberSaveable { mutableStateOf(showGuide) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(vm, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -99,24 +101,34 @@ private fun App(vm: MainViewModel = viewModel()) {
             vm.recommendationPresented(state.presentationId)
         }
     }
-    key(state.dataGeneration) { AppContent(state, vm) }
+    key(state.dataGeneration) { AppContent(state, vm, initialGuideAvailable) { initialGuideAvailable = false } }
 }
 
 @OptIn(ExperimentalLayoutApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-private fun AppContent(state: UiState, vm: MainViewModel) {
+private fun AppContent(state: UiState, vm: MainViewModel, showGuide: Boolean, onGuideDismissed: () -> Unit) {
     var page by rememberSaveable { mutableStateOf("home") }
+    var guideVisible by rememberSaveable { mutableStateOf(showGuide) }
+    var guideStep by rememberSaveable { mutableIntStateOf(0) }
     val pages = rememberSaveableStateHolder()
-    BackHandler(enabled = page != "home") { page = "home" }
+    BackHandler(enabled = guideVisible || page != "home") {
+        if (guideVisible && guideStep > 0) guideStep--
+        else if (guideVisible) { guideVisible = false; onGuideDismissed() }
+        else page = "home"
+    }
     val trialExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportTrial) }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::export) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.notice) {
         if (state.notice.isNotBlank()) snackbar.showSnackbar(state.notice)
     }
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
+    Scaffold(snackbarHost = { if (!guideVisible) SnackbarHost(snackbar) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).semantics { testTagsAsResourceId = true }, contentAlignment = Alignment.TopCenter) {
-            Column(Modifier.widthIn(max = 580.dp).fillMaxSize().padding(horizontal = 24.dp)) {
+            if (guideVisible) GettingStarted(guideStep,
+                next = { guideStep = (guideStep + 1).coerceAtMost(guideSteps.lastIndex) }, previous = { guideStep = (guideStep - 1).coerceAtLeast(0) }, skip = { guideVisible = false; onGuideDismissed() },
+                finish = { guideVisible = false; onGuideDismissed(); page = "home" },
+                openLibrary = { guideVisible = false; onGuideDismissed(); page = "library" })
+            else Column(Modifier.widthIn(max = 580.dp).fillMaxSize().padding(horizontal = 24.dp)) {
                 FlowRow(Modifier.fillMaxWidth().heightIn(min = 56.dp),
                     horizontalArrangement = if (page == "home") Arrangement.End else Arrangement.SpaceBetween) {
                     if (page != "home") TextButton(onClick = { page = "home" }) {
@@ -139,7 +151,7 @@ private fun AppContent(state: UiState, vm: MainViewModel) {
                             "meal" -> MealPage(state, vm)
                             "compare" -> ComparePage(state, vm)
                             "history" -> HistoryPage(state, vm, { exporter.launch("what-to-eat-records.json") })
-                            "settings" -> SettingsPage(state, vm, { page = "library" }) { trialExporter.launch("what-to-eat-trial.json") }
+                            "settings" -> SettingsPage(state, vm, { page = "library" }, { guideStep = 0; guideVisible = true }) { trialExporter.launch("what-to-eat-trial.json") }
                         }
                     }
                     }
@@ -401,13 +413,14 @@ private fun EditDialog(row: EventRow, foods: List<Food>, onDismiss: () -> Unit, 
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SettingsPage(state: UiState, vm: MainViewModel, openLibrary: () -> Unit, exportTrial: () -> Unit) {
+private fun SettingsPage(state: UiState, vm: MainViewModel, openLibrary: () -> Unit, replayGuide: () -> Unit, exportTrial: () -> Unit) {
     Text("偏好与数据", style = MaterialTheme.typography.headlineMedium)
     TextButton(onClick = openLibrary) { Text("菜品库") }
-    var excluded by remember(state.preferences) { mutableStateOf(state.preferences.excludedIngredients.joinToString(",")) }
-    var preferred by remember(state.preferences) { mutableStateOf(state.preferences.preferredGroups.joinToString(",")) }
-    var context by remember(state.preferences) { mutableStateOf(state.preferences.context) }
-    var learning by remember(state.preferences) { mutableStateOf(state.preferences.learningEnabled) }
+    TextButton(onClick = replayGuide) { Text("新手指引") }
+    var excluded by rememberSaveable(state.preferences) { mutableStateOf(state.preferences.excludedIngredients.joinToString(",")) }
+    var preferred by rememberSaveable(state.preferences) { mutableStateOf(state.preferences.preferredGroups.joinToString(",")) }
+    var context by rememberSaveable(state.preferences) { mutableStateOf(state.preferences.context) }
+    var learning by rememberSaveable(state.preferences) { mutableStateOf(state.preferences.learningEnabled) }
     OutlinedTextField(excluded, { excluded = it; vm.userInteracted() }, label = { Text("不吃的原料") }, placeholder = { Text("例如：花生,虾") }, modifier = Modifier.fillMaxWidth())
     Text("按常见配方过滤；过敏者仍需确认实际配料及交叉接触。", style = MaterialTheme.typography.bodySmall)
     OutlinedTextField(preferred, { preferred = it; vm.userInteracted() }, label = { Text("口味偏好") }, placeholder = { Text("例如：家常,面食,清淡") }, modifier = Modifier.fillMaxWidth())

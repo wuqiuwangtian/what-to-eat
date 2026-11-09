@@ -13,7 +13,8 @@ import java.io.File
 
 /** 非清空检查；不勾选同意、不加入试用，不截图个人偏好输入框。 */
 class TrialConsentTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val returningUser = ReturningUserRule()
+    @get:Rule(order = 1) val rule = createAndroidComposeRule<MainActivity>()
     @Test fun viewingConsentDoesNotEnrollOrExposePersonalPreferences() {
         val vm = ViewModelProvider(rule.activity)[MainViewModel::class.java]
         rule.waitUntil(15_000) { !vm.state.value.loading }

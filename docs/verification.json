@@ -232,7 +232,7 @@
       "source_sha256": "f9e10440c4c678059fb645b434c045b97cb5dd0877bcf43df5c19ea012d388ce"
     }
   },
-  "latest_validation": "library_preview",
+  "latest_validation": "onboarding_preview",
   "trial_preview": {
     "date": "2026-11-09",
     "app_version": "0.1.0-dev.2",
@@ -744,5 +744,50 @@
       },
       "worst_traces_pulled": true
     }
+  },
+  "onboarding_preview": {
+    "date": "2026-11-09",
+    "app_version": "0.1.0-dev.4",
+    "version_code": 4,
+    "database_version": 3,
+    "first_launch_guide": true,
+    "settings_replay": true,
+    "guide_step_count": 4,
+    "guide_seen_marker_independent_of_diet": true,
+    "jvm_tests": 38,
+    "python_tests": 27,
+    "lint": "passed",
+    "emulator": {
+      "sdk": 29,
+      "result": "OK (34 tests)",
+      "duration_seconds": 37.189,
+      "large_font": {
+        "scale": 2,
+        "size": "840x1600",
+        "result": "OK (4 tests)",
+        "duration_seconds": 10.007
+      },
+      "landscape": {
+        "scale": 2,
+        "size": "1600x840",
+        "result": "OK (4 tests)",
+        "duration_seconds": 8.321
+      },
+      "font_and_size_restored": true
+    },
+    "guide_tests_verify": [
+      "Fresh first launch, skip, restart suppression",
+      "Rotation, page top and rapid click boundaries",
+      "Full guide and optional library navigation without enrollment or meal changes",
+      "Settings replay, back and preservation of unsaved preference draft",
+      "Clearing diet/settings does not reintroduce automatic guide"
+    ],
+    "incremental_debug_apk_sha256": "3bc914cc47231d1f6f4a4f5bd0caa789df22d5aa9297bae02a974539b46c516b",
+    "remaining": [
+      "Clean frozen bundle verification and physical upgrade",
+      "Human coverage/effectiveness, catalog/license review, formal signing and real API"
+    ],
+    "current_performance_remeasured": false,
+    "previous_performance_summary": "macrobenchmark-2026-11-09-library.json"
   }
 }

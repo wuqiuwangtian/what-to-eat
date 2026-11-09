@@ -10,6 +10,7 @@ import java.time.Instant
 /** 仅隔离的benchmark变体接受此预置；在测量区间外准备1000条合成历史。 */
 internal fun seedBenchmarkHistory(context: Context) {
     check(BuildConfig.BUILD_TYPE == "benchmark" && context.packageName.endsWith(".benchmark"))
+    check(GuideStore(context).markSeen()) // 测量已有合成历史的返回用户首页。
     runBlocking(Dispatchers.IO) {
         val foods = Catalog.load()
         val now = Instant.now().toEpochMilli()

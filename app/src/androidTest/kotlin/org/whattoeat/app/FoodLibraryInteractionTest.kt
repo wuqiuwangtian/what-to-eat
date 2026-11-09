@@ -14,7 +14,8 @@ import java.io.File
 
 /** 含清空用例，只在专用测试安装运行。 */
 class FoodLibraryInteractionTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val returningUser = ReturningUserRule()
+    @get:Rule(order = 1) val rule = createAndroidComposeRule<MainActivity>()
     private fun model() = ViewModelProvider(rule.activity)[MainViewModel::class.java]
     private fun idle() = rule.waitUntil(15_000) { !model().state.value.loading && !model().state.value.busy }
     @Before fun reset() { idle(); rule.runOnIdle { model().clearAll() }; idle() }

@@ -13,7 +13,8 @@ import org.junit.Test
 
 /** 需要模拟器或设备；不能把编译此测试当成实际执行。 */
 class SmokeTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val returningUser = ReturningUserRule()
+    @get:Rule(order = 1) val rule = createAndroidComposeRule<MainActivity>()
     private fun waitForHome() {
         rule.waitUntil(timeoutMillis = 15_000) { rule.onAllNodesWithText("吃什么？").fetchSemanticsNodes().isNotEmpty() }
     }

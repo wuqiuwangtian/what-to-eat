@@ -9,7 +9,8 @@ import org.junit.Test
 
 /** 专用测试安装内验证用户路径，不使用真实餐食或模型凭据。 */
 class InteractionTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val returningUser = ReturningUserRule()
+    @get:Rule(order = 1) val rule = createAndroidComposeRule<MainActivity>()
     private fun model() = ViewModelProvider(rule.activity)[MainViewModel::class.java]
     private fun home() {
         rule.waitUntil(15_000) { rule.onAllNodesWithText("吃什么？").fetchSemanticsNodes().isNotEmpty() }
