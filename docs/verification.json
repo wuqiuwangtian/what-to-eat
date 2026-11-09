@@ -537,7 +537,7 @@
       "apk_sha256": "e7f93a2c4f74427ae4b37d67a2628e65c3ccdc38070aca8135411629d3887bd9",
       "app_version": "0.1.0-dev.3"
     },
-    "debug_apk_sha256": "d2b7b5717a102daa7e8d3ad72a7469c27f880e413b454595f6f384b07a23b17d",
+    "debug_apk_sha256": "7761a190349b12d4fa46409ec45766cd2fa6b1e8790af82e64e5a4ff6a144d52",
     "ordinary_export_format_version": 2,
     "trial_export_format_version": 1,
     "protocol": "local-crossover-v1",
@@ -548,11 +548,178 @@
       "images/library-landscape-large-font.png"
     ],
     "remaining": [
-      "Final physical update of the last UI revision and isolated physical performance measurement",
-      "Natural coverage feedback and human effectiveness",
-      "Catalog expansion/review and final license/signing gates"
+      "Phone auxiliary package cleanup and worst traces pending reconnection",
+      "User natural coverage feedback before recruitment; no human-effectiveness conclusion",
+      "Catalog expansion/review and license review; maintainer signing and real API validation",
+      "Discovery/trial-enabled latency and other device coverage unverified"
     ],
     "no_automatic_human_enrollment": true,
-    "formal_release_published": false
+    "formal_release_published": false,
+    "source_revision": "7fa2c96",
+    "phone": {
+      "date": "2026-11-09",
+      "device_alias": "physical-1",
+      "model": "ELI-AN00",
+      "sdk": "36",
+      "schema_before": 3,
+      "schema_after": 3,
+      "original_event_count": 63,
+      "all_original_rows_unchanged": true,
+      "original_rows_sha256": "9da815ddb5fd65d71bac0bd0a8b5ef13968eeab044d8589d025191e427067e93",
+      "trial_enrollment_unchanged": true,
+      "personal_library_rows_preserved": 0,
+      "legacy_food_exclusions_checked": 0,
+      "legacy_food_exclusions_preserved": true,
+      "ordinary_app_data_cleared": false,
+      "apk_sha256": "7761a190349b12d4fa46409ec45766cd2fa6b1e8790af82e64e5a4ff6a144d52",
+      "app_version": "0.1.0-dev.3"
+    },
+    "final_incremental_phone_upgrade": {
+      "date": "2026-11-09",
+      "device_alias": "physical-1",
+      "model": "ELI-AN00",
+      "sdk": "36",
+      "schema_before": 3,
+      "schema_after": 3,
+      "original_event_count": 63,
+      "all_original_rows_unchanged": true,
+      "original_rows_sha256": "9da815ddb5fd65d71bac0bd0a8b5ef13968eeab044d8589d025191e427067e93",
+      "trial_enrollment_unchanged": true,
+      "personal_library_rows_preserved": 0,
+      "legacy_food_exclusions_checked": 0,
+      "legacy_food_exclusions_preserved": true,
+      "ordinary_app_data_cleared": false,
+      "apk_sha256": "d2b7b5717a102daa7e8d3ad72a7469c27f880e413b454595f6f384b07a23b17d",
+      "app_version": "0.1.0-dev.3"
+    },
+    "frozen_debug_apk_sha256": "7761a190349b12d4fa46409ec45766cd2fa6b1e8790af82e64e5a4ff6a144d52",
+    "incremental_debug_apk_sha256": "d2b7b5717a102daa7e8d3ad72a7469c27f880e413b454595f6f384b07a23b17d",
+    "frozen_manifest_sha256": "f2b24ce1a2bae631c0a776f807f787bd7ced046e858f72ac41fd60bb0dc90c9e",
+    "debug_signing_certificate_sha256": "a7dd82e61ef5d4740acf1096bd6f25ef05258ae46cf5e49ef8f5c19144002a58",
+    "clean_checkout_build": true,
+    "build_commands": [
+      [
+        "./gradlew",
+        "-Pbenchmarks",
+        ":core:test",
+        ":experiments:run",
+        ":app:testDebugUnitTest",
+        ":app:lintDebug",
+        ":app:assembleDebug",
+        ":app:assembleDebugAndroidTest",
+        ":app:assembleRelease",
+        ":app:assembleBenchmark",
+        ":benchmark:assembleBenchmark",
+        ":app:debugRuntimeInventory",
+        ":app:releaseRuntimeInventory",
+        "--console=plain"
+      ],
+      [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts",
+        "-p",
+        "test_*.py",
+        "-v"
+      ],
+      [
+        "python3",
+        "scripts/check_repository.py"
+      ]
+    ],
+    "release_rehearsal": {
+      "result": "passed",
+      "sdk": "29",
+      "apk": {
+        "package": "org.whattoeat.app",
+        "version_code": "3",
+        "version_name": "0.1.0-dev.3",
+        "minimum_sdk": 29,
+        "debuggable": false,
+        "signing_certificate_sha256": "cc9d35ec615ac6ce5899e5fb1973adc21d0ea7ffa7290b78b296f05c44ed96c8"
+      },
+      "unsigned_apk_sha256": "3ce123df3c23e57b5f243afc3d8ceb3b75e6d4a67ec77cc08ea21d74f74be1f5",
+      "test_signed_apk_sha256": "e3155635bb016beae6c3b781c56c59f575515ed70f26cb0ee2f5140cfbef8e9f",
+      "fresh_install": true,
+      "same_certificate_reinstall": true,
+      "planned_history_unchanged": true,
+      "temporary_key_deleted": true,
+      "maintainer_key_tested": false,
+      "different_version_upgrade_tested": false,
+      "physical_device_modified": false
+    },
+    "isolated_phone_trial": {
+      "result": "passed",
+      "package": "org.whattoeat.app.benchmark",
+      "app_version": "0.1.0-dev.3",
+      "synthetic_sessions": 3,
+      "allocation_counts": {
+        "RANDOM": 1,
+        "PERSONALIZED": 1,
+        "SIMPLE": 1
+      },
+      "presentations_per_session": [
+        2,
+        1,
+        1
+      ],
+      "end_reasons": [
+        "ADOPTED",
+        "MANUAL",
+        "ADOPTED"
+      ],
+      "confirmed_eaten_inferred": false,
+      "export_via_system_document_picker": true,
+      "real_human_trial": false,
+      "ordinary_app_modified": false
+    },
+    "offline": {
+      "sdk": 29,
+      "original_network_settings": {
+        "wifi_on": "1",
+        "mobile_data": "1"
+      },
+      "result": "passed",
+      "active_default_network_during_test": "none",
+      "interaction_tests": "OK (5 tests)",
+      "export": {
+        "path": "Android system document picker to Downloads; unique synthetic-data file",
+        "format_version": 2,
+        "personal_library_present": true,
+        "event_count": 5,
+        "planned_event_present": true,
+        "model_configuration_present": false
+      },
+      "restored_network_settings": {
+        "wifi_on": "1",
+        "mobile_data": "1"
+      },
+      "network_settings_restored": true
+    },
+    "performance_summary": "macrobenchmark-2026-11-09-library.json",
+    "incremental_and_clean_apks_byte_identical": false,
+    "final_phone_apk_identical_to_frozen_bundle": true,
+    "auxiliary_packages_removed": false,
+    "worst_traces_pulled": false,
+    "pending_device_cleanup": [
+      "org.whattoeat.app.benchmark",
+      "org.whattoeat.benchmark"
+    ],
+    "device_cleanup_status": "USB disconnected after completed tests; user will reconnect later",
+    "frozen_apk_emulator": {
+      "sdk": 29,
+      "result": "OK (30 tests)",
+      "duration_seconds": 38.283,
+      "large_font_result": "OK (4 tests)",
+      "large_font_duration_seconds": 12.64,
+      "landscape_result": "OK (4 tests)",
+      "landscape_duration_seconds": 9.652,
+      "font_restored": 1.0,
+      "size_restored": true
+    },
+    "build_reproducibility_limit": "Incremental and clean builds have different generated DEX bytes; both tested, frozen clean APK independently installed and tested. No byte-reproducibility claim."
   }
 }

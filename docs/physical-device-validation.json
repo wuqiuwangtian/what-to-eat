@@ -72,7 +72,7 @@
     ],
     "performance_summary": "macrobenchmark-physical-1.json"
   },
-  "latest_validation": "trial_preview",
+  "latest_validation": "library_preview",
   "trial_preview": {
     "source_revision": "cc91dfc",
     "date": "2026-11-09",
@@ -141,6 +141,77 @@
       "org.whattoeat.benchmark"
     ],
     "ordinary_app_retained": true,
+    "global_font_or_network_settings_changed": false
+  },
+  "library_preview": {
+    "source_revision": "7fa2c96",
+    "date": "2026-11-09",
+    "device_alias": "physical-1",
+    "model": "ELI-AN00",
+    "sdk": "36",
+    "schema_before": 3,
+    "schema_after": 3,
+    "original_event_count": 63,
+    "all_original_rows_unchanged": true,
+    "original_rows_sha256": "9da815ddb5fd65d71bac0bd0a8b5ef13968eeab044d8589d025191e427067e93",
+    "trial_enrollment_unchanged": true,
+    "personal_library_rows_preserved": 0,
+    "legacy_food_exclusions_checked": 0,
+    "legacy_food_exclusions_preserved": true,
+    "ordinary_app_data_cleared": false,
+    "apk_sha256": "7761a190349b12d4fa46409ec45766cd2fa6b1e8790af82e64e5a4ff6a144d52",
+    "app_version": "0.1.0-dev.3",
+    "initial_schema_upgrade": {
+      "date": "2026-11-09",
+      "device_alias": "physical-1",
+      "model": "ELI-AN00",
+      "sdk": "36",
+      "schema_before": 2,
+      "schema_after": 3,
+      "original_event_count": 63,
+      "all_original_rows_unchanged": true,
+      "original_rows_sha256": "9f1db13be8ca07a804e53681ac2d155bafe88733cc1782c82577a91a1aacf77f",
+      "trial_enrollment_unchanged": true,
+      "legacy_food_exclusions_checked": 0,
+      "legacy_food_exclusions_preserved": true,
+      "ordinary_app_data_cleared": false,
+      "apk_sha256": "e7f93a2c4f74427ae4b37d67a2628e65c3ccdc38070aca8135411629d3887bd9",
+      "app_version": "0.1.0-dev.3"
+    },
+    "isolated_synthetic_trial": {
+      "result": "passed",
+      "package": "org.whattoeat.app.benchmark",
+      "app_version": "0.1.0-dev.3",
+      "synthetic_sessions": 3,
+      "allocation_counts": {
+        "RANDOM": 1,
+        "PERSONALIZED": 1,
+        "SIMPLE": 1
+      },
+      "presentations_per_session": [
+        2,
+        1,
+        1
+      ],
+      "end_reasons": [
+        "ADOPTED",
+        "MANUAL",
+        "ADOPTED"
+      ],
+      "confirmed_eaten_inferred": false,
+      "export_via_system_document_picker": true,
+      "real_human_trial": false,
+      "ordinary_app_modified": false
+    },
+    "performance_summary": "macrobenchmark-2026-11-09-library.json",
+    "ordinary_app_retained": true,
+    "auxiliary_packages_removed": false,
+    "pending_device_cleanup": [
+      "org.whattoeat.app.benchmark",
+      "org.whattoeat.benchmark"
+    ],
+    "cleanup_status": "USB disconnected after completed tests; user will reconnect later",
+    "worst_traces_pulled": false,
     "global_font_or_network_settings_changed": false
   }
 }

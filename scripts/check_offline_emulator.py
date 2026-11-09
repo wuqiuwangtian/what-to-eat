@@ -76,10 +76,12 @@ try:
     data = json.loads(raw)
     if data.get('formatVersion') not in {1, 2} or not data.get('events') or 'preferences' not in data or {'apiKey', 'model'} & data.keys():
         raise RuntimeError('Export content did not match contract')
+    if data['formatVersion'] == 2 and (not isinstance(data.get('foodLibrary'), dict) or data['foodLibrary'].get('kind') != 'food-library'):
+        raise RuntimeError('Personal library missing from version 2 export')
     if not any((e.get('type') == 'PLANNED' for e in data['events'])):
         raise RuntimeError('Planned event missing')
     (out / 'export.json').write_bytes(raw)
-    report['export'] = {'path': 'Android system document picker to Downloads; unique synthetic-data file', 'format_version': 1, 'event_count': len(data['events']), 'planned_event_present': True, 'model_configuration_present': False}
+    report['export'] = {'path': 'Android system document picker to Downloads; unique synthetic-data file', 'format_version': data['formatVersion'], 'personal_library_present': isinstance(data.get('foodLibrary'), dict), 'event_count': len(data['events']), 'planned_event_present': True, 'model_configuration_present': False}
     shell('rm', '-f', '/sdcard/Download/' + filename)
     report['result'] = 'passed'
     print('Offline system document export passed.', flush=True)
