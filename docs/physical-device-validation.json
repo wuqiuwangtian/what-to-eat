@@ -205,13 +205,12 @@
     },
     "performance_summary": "macrobenchmark-2026-11-09-library.json",
     "ordinary_app_retained": true,
-    "auxiliary_packages_removed": false,
-    "pending_device_cleanup": [
-      "org.whattoeat.app.benchmark",
-      "org.whattoeat.benchmark"
-    ],
-    "cleanup_status": "USB disconnected after completed tests; user will reconnect later",
-    "worst_traces_pulled": false,
-    "global_font_or_network_settings_changed": false
+    "auxiliary_packages_removed": true,
+    "pending_device_cleanup": [],
+    "cleanup_status": "Completed on reconnection; three worst traces preserved locally, auxiliary packages absent, ordinary app opened",
+    "worst_traces_pulled": true,
+    "global_font_or_network_settings_changed": false,
+    "ordinary_app_opened": true,
+    "device_cleanup_date": "2026-11-09"
   }
 }

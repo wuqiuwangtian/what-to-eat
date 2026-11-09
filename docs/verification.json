@@ -548,7 +548,6 @@
       "images/library-landscape-large-font.png"
     ],
     "remaining": [
-      "Phone auxiliary package cleanup and worst traces pending reconnection",
       "User natural coverage feedback before recruitment; no human-effectiveness conclusion",
       "Catalog expansion/review and license review; maintainer signing and real API validation",
       "Discovery/trial-enabled latency and other device coverage unverified"
@@ -702,13 +701,10 @@
     "performance_summary": "macrobenchmark-2026-11-09-library.json",
     "incremental_and_clean_apks_byte_identical": false,
     "final_phone_apk_identical_to_frozen_bundle": true,
-    "auxiliary_packages_removed": false,
-    "worst_traces_pulled": false,
-    "pending_device_cleanup": [
-      "org.whattoeat.app.benchmark",
-      "org.whattoeat.benchmark"
-    ],
-    "device_cleanup_status": "USB disconnected after completed tests; user will reconnect later",
+    "auxiliary_packages_removed": true,
+    "worst_traces_pulled": true,
+    "pending_device_cleanup": [],
+    "device_cleanup_status": "Completed on reconnection; three worst traces preserved locally, auxiliary packages absent, ordinary app opened",
     "frozen_apk_emulator": {
       "sdk": 29,
       "result": "OK (30 tests)",
@@ -720,6 +716,33 @@
       "font_restored": 1.0,
       "size_restored": true
     },
-    "build_reproducibility_limit": "Incremental and clean builds have different generated DEX bytes; both tested, frozen clean APK independently installed and tested. No byte-reproducibility claim."
+    "build_reproducibility_limit": "Incremental and clean builds have different generated DEX bytes; both tested, frozen clean APK independently installed and tested. No byte-reproducibility claim.",
+    "ordinary_app_opened": true,
+    "device_cleanup_date": "2026-11-09",
+    "device_cleanup": {
+      "date": "2026-11-09",
+      "result": "completed",
+      "auxiliary_packages_removed": [
+        "org.whattoeat.benchmark",
+        "org.whattoeat.app.benchmark"
+      ],
+      "ordinary_app_opened": true,
+      "ordinary_app_data_cleared": false,
+      "traces": {
+        "startup": {
+          "retrieved": true,
+          "sha256": "afeab8ee9ca1d8b2b0a61691ff2d7a078ed90d37642a91df6b6e94d76a1ff8fb"
+        },
+        "firstRecommendation": {
+          "retrieved": true,
+          "sha256": "567ae2e1662b6c82eceacb4a3e82513b01b68f16783c2d31ee55cce9b1dbe666"
+        },
+        "switchRecommendation": {
+          "retrieved": true,
+          "sha256": "fb597d9381cc6c2598d13ab25275157fa164e73190b7821ce67ce7394adc4a01"
+        }
+      },
+      "worst_traces_pulled": true
+    }
   }
 }
