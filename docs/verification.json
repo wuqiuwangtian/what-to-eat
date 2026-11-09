@@ -784,10 +784,67 @@
     ],
     "incremental_debug_apk_sha256": "3bc914cc47231d1f6f4a4f5bd0caa789df22d5aa9297bae02a974539b46c516b",
     "remaining": [
-      "Clean frozen bundle verification and physical upgrade",
       "Human coverage/effectiveness, catalog/license review, formal signing and real API"
     ],
     "current_performance_remeasured": false,
-    "previous_performance_summary": "macrobenchmark-2026-11-09-library.json"
+    "previous_performance_summary": "macrobenchmark-2026-11-09-library.json",
+    "source_revision": "8e23bf57574469dca05a5508efaf80f384f36ce4",
+    "phone": {
+      "date": "2026-11-09",
+      "device_alias": "physical-1",
+      "model": "ELI-AN00",
+      "sdk": "36",
+      "schema_before": 3,
+      "schema_after": 3,
+      "original_event_count": 63,
+      "all_original_rows_unchanged": true,
+      "original_rows_sha256": "9da815ddb5fd65d71bac0bd0a8b5ef13968eeab044d8589d025191e427067e93",
+      "trial_enrollment_unchanged": true,
+      "personal_library_rows_preserved": 0,
+      "legacy_food_exclusions_checked": 0,
+      "legacy_food_exclusions_preserved": true,
+      "ordinary_app_data_cleared": false,
+      "apk_sha256": "69c744bbe092b20a38dbe0a69014330de249eb0e3daa7c8860463556ae826e3b",
+      "app_version": "0.1.0-dev.4",
+      "guide_visible_after_final_open": true
+    },
+    "frozen_debug_apk_sha256": "69c744bbe092b20a38dbe0a69014330de249eb0e3daa7c8860463556ae826e3b",
+    "frozen_manifest_sha256": "b39d2647ba1bb8f184cd935787c47cfc8e01339a06b6fe9b6f049adfcb603a90",
+    "signing_certificate_sha256": "a7dd82e61ef5d4740acf1096bd6f25ef05258ae46cf5e49ef8f5c19144002a58",
+    "clean_checkout_build": true,
+    "frozen_phone_bytes_identical": true,
+    "release_rehearsal": {
+      "result": "passed",
+      "sdk": "29",
+      "apk": {
+        "package": "org.whattoeat.app",
+        "version_code": "4",
+        "version_name": "0.1.0-dev.4",
+        "minimum_sdk": 29,
+        "debuggable": false,
+        "signing_certificate_sha256": "3f28a8eecbb49c971b11012c9f9fb4b012c857f17901ed1aca8053977e538b9b"
+      },
+      "unsigned_apk_sha256": "cea93cb77ce1cc2399c106d0d8ce4b30d902ba6624f5264118c89404a4aa3648",
+      "test_signed_apk_sha256": "883ffb9960926384030810f6b02df936d9cc4ade9d06b9a86c21ebb3c3012c40",
+      "fresh_install": true,
+      "first_guide_skipped_when_present": true,
+      "same_certificate_reinstall": true,
+      "planned_history_unchanged": true,
+      "temporary_key_deleted": true,
+      "maintainer_key_tested": false,
+      "different_version_upgrade_tested": false,
+      "physical_device_modified": false
+    },
+    "no_physical_test_packages_installed": true,
+    "frozen_emulator": {
+      "sdk": 29,
+      "result": "OK (34 tests)",
+      "duration_seconds": 42.114,
+      "large_font_result": "OK (4 tests)",
+      "large_font_duration_seconds": 9.856,
+      "landscape_result": "OK (4 tests)",
+      "landscape_duration_seconds": 7.718,
+      "font_and_size_restored": true
+    }
   }
 }

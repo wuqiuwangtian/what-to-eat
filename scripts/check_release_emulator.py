@@ -90,6 +90,14 @@ def main():
             if 'Success' not in adb('install', str(signed)):
                 raise RuntimeError('Release install failed')
             adb('shell', 'am', 'start', '-W', '-n', PACKAGE+'/.MainActivity')
+            guide_skipped = False
+            for _ in range(10):
+                nodes = list(window().iter('node'))
+                if any(n.get('package') == PACKAGE and n.get('resource-id') == 'gettingStarted' for n in nodes):
+                    click('跳过'); guide_skipped = True; break
+                if any(n.get('package') == PACKAGE and n.get('text') == '吃什么？' for n in nodes):
+                    break
+                time.sleep(.2)
             click('吃什么？'); click('就它了'); click('记录')
             find('打算吃 · ', prefix_match=True)
             # 非debug包没有run-as：通过真实记录界面检查覆盖后仍存在计划。
@@ -108,7 +116,7 @@ def main():
                 raise RuntimeError('History content changed after reinstall')
             report = {'result': 'passed', 'sdk': adb('shell', 'getprop', 'ro.build.version.sdk'), 'apk': actual,
                       'unsigned_apk_sha256': sha256(args.apk), 'test_signed_apk_sha256': sha256(signed),
-                      'fresh_install': True, 'same_certificate_reinstall': True, 'planned_history_unchanged': True,
+                      'fresh_install': True, 'first_guide_skipped_when_present': guide_skipped, 'same_certificate_reinstall': True, 'planned_history_unchanged': True,
                       'temporary_key_deleted': True, 'maintainer_key_tested': False,
                       'different_version_upgrade_tested': False, 'physical_device_modified': False}
     finally:

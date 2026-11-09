@@ -72,7 +72,7 @@
     ],
     "performance_summary": "macrobenchmark-physical-1.json"
   },
-  "latest_validation": "library_preview",
+  "latest_validation": "onboarding_preview",
   "trial_preview": {
     "source_revision": "cc91dfc",
     "date": "2026-11-09",
@@ -212,5 +212,30 @@
     "global_font_or_network_settings_changed": false,
     "ordinary_app_opened": true,
     "device_cleanup_date": "2026-11-09"
+  },
+  "onboarding_preview": {
+    "date": "2026-11-09",
+    "device_alias": "physical-1",
+    "model": "ELI-AN00",
+    "sdk": "36",
+    "schema_before": 3,
+    "schema_after": 3,
+    "original_event_count": 63,
+    "all_original_rows_unchanged": true,
+    "original_rows_sha256": "9da815ddb5fd65d71bac0bd0a8b5ef13968eeab044d8589d025191e427067e93",
+    "trial_enrollment_unchanged": true,
+    "personal_library_rows_preserved": 0,
+    "legacy_food_exclusions_checked": 0,
+    "legacy_food_exclusions_preserved": true,
+    "ordinary_app_data_cleared": false,
+    "apk_sha256": "69c744bbe092b20a38dbe0a69014330de249eb0e3daa7c8860463556ae826e3b",
+    "app_version": "0.1.0-dev.4",
+    "guide_visible_after_final_open": true,
+    "source_revision": "8e23bf57574469dca05a5508efaf80f384f36ce4",
+    "cold_database_snapshot_before_first_guide_launch": true,
+    "guide_left_visible_for_user": true,
+    "ordinary_app_retained": true,
+    "global_font_or_network_settings_changed": false,
+    "physical_test_packages_installed_this_round": false
   }
 }
