@@ -83,4 +83,15 @@ class RecommenderTest {
         val analysis = MealAnalyzer(foods).analyze("打算吃西红柿炒鸡蛋")
         assertTrue(analysis.foods.any { it.id == foods.first().id })
     }
+    @Test fun porkAndEggRestrictionsIncludeExplicitCatalogVariants() {
+        for ((restriction, ids) in mapOf("猪肉" to listOf("food-026", "food-031", "food-091", "food-093", "food-113"),
+                                        "鸡蛋" to listOf("food-036"))) {
+            val eligible = engine.eligible(foods, Preferences(excludedIngredients = setOf(restriction))).map { it.id }
+            assertTrue(ids.none { it in eligible })
+        }
+    }
+    @Test fun shellfishMealIsNotReportedAsMissingAProteinSource() {
+        val shrimp = foods.single { it.id == "food-017" }
+        assertFalse(MealAnalyzer(foods).assess(listOf(shrimp)).suggestions.any { "蛋白质来源" in it })
+    }
 }

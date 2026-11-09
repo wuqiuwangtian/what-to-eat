@@ -8,6 +8,8 @@ import okhttp3.tls.HandshakeCertificates
 import okhttp3.tls.HeldCertificate
 import org.junit.Assert.*
 import org.junit.Test
+import java.util.concurrent.TimeUnit
+import java.io.IOException
 import org.whattoeat.core.Catalog
 
 class ProviderTransportTest {
@@ -44,5 +46,27 @@ class ProviderTransportTest {
         val error = assertThrows(Exception::class.java) { runBlocking { provider.normalize("番茄炒蛋", Catalog.load()) } }
         assertFalse(error.message.orEmpty().contains("secret-server-detail"))
         assertFalse(error.message.orEmpty().contains("test-key"))
+    }
+    @Test fun rateLimitsAndUnavailableServicesFailWithoutAutomaticRetryOrLeakingBodies() {
+        listOf(429, 503).forEach { status -> secureServer { server, client ->
+            server.enqueue(MockResponse().setResponseCode(status).setHeader("Retry-After", "60").setBody("private-provider-detail"))
+            val provider = CompatibleModelProvider(ModelConfig(server.url("/v1").toString(), "test", "fixture-key"), client)
+            val error = assertThrows(IOException::class.java) { runBlocking { provider.normalize("番茄炒蛋", Catalog.load()) } }
+            assertEquals(1, server.requestCount)
+            assertFalse(error.message.orEmpty().contains("private-provider-detail"))
+            assertFalse(error.message.orEmpty().contains("fixture-key"))
+        } }
+    }
+    @Test fun boundedTimeoutReturnsAnErrorWithoutCredentials() = secureServer { server, client ->
+        server.enqueue(MockResponse().setHeadersDelay(2, TimeUnit.SECONDS).setBody("{}"))
+        val bounded = client.newBuilder().callTimeout(500, TimeUnit.MILLISECONDS).build()
+        val provider = CompatibleModelProvider(ModelConfig(server.url("/v1").toString(), "test", "fixture-key"), bounded)
+        val error = assertThrows(IOException::class.java) { runBlocking { provider.normalize("番茄炒蛋", Catalog.load()) } }
+        assertFalse(error.message.orEmpty().contains("fixture-key"))
+    }
+    @Test fun oversizedTransportBodyIsRejected() = secureServer { server, client ->
+        server.enqueue(MockResponse().setBody("x".repeat(1_048_577)))
+        val provider = CompatibleModelProvider(ModelConfig(server.url("/v1").toString(), "test", "fixture-key"), client)
+        assertThrows(IOException::class.java) { runBlocking { provider.normalize("番茄炒蛋", Catalog.load()) } }
     }
 }

@@ -103,7 +103,7 @@ class MealAnalyzer(private val catalog: List<Food>) {
             if (foods.isEmpty()) add("暂时无法确认这顿的组成；可选择已知菜品或补充菜名，不估算热量。")
             else {
                 if ("蔬菜" !in groups) add("按常见做法，这份搭配可能蔬菜较少；方便时可加一份青菜。")
-                if (groups.none { it in setOf("肉类", "蛋类", "鱼类", "豆类", "奶类") }) add("可以考虑搭配鸡蛋、豆腐等蛋白质来源。")
+                if (groups.none { it in setOf("肉类", "蛋类", "鱼类", "水产", "豆类", "奶类") }) add("可以考虑搭配鸡蛋、豆腐等蛋白质来源。")
                 if (isEmpty()) add("按常见做法包含多类食物；实际搭配仍取决于配料和份量。")
                 add("这里只分析这次输入，不据此判断全天或整周营养是否充足。")
             }
