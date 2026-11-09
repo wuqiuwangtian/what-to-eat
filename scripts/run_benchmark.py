@@ -17,10 +17,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--adb', default='adb')
     parser.add_argument('--serial', required=True)
+    parser.add_argument('--adb-port', type=int, help='独立ADB服务端口；省略时使用ADB默认端口')
     parser.add_argument('--iterations', type=int, default=20)
     parser.add_argument('--smoke', action='store_true', help='只跑三轮链路预检，不生成性能验收摘要')
     parser.add_argument('--output', type=Path, default=Path('artifacts/macrobenchmark'))
     args = parser.parse_args()
+    if args.adb_port is not None and not 1 <= args.adb_port <= 65535:
+        parser.error('--adb-port must be between 1 and 65535')
+    adb_prefix = [args.adb] + (['-P', str(args.adb_port)] if args.adb_port else []) + ['-s', args.serial]
     if not 20 <= args.iterations <= 50:
         parser.error('Use 20–50 iterations for acceptance measurements')
     if not TARGET_APK.is_file() or not RUNNER_APK.is_file():
@@ -35,10 +39,10 @@ def main():
             return subprocess.check_output(['wslpath', '-w', value], text=True).strip()
         return value
 
-    def adb(*parts, timeout=30):
-        result = subprocess.run([args.adb, '-s', args.serial, *parts], capture_output=True,
+    def adb(*parts, timeout=30, allow_missing=False):
+        result = subprocess.run([*adb_prefix, *parts], capture_output=True,
                                 text=True, timeout=timeout)
-        if result.returncode:
+        if result.returncode and not (allow_missing and not result.stdout.strip() and not result.stderr.strip()):
             raise RuntimeError(result.stderr.strip() or result.stdout.strip() or 'ADB command failed')
         return result.stdout.strip()
 
@@ -50,7 +54,7 @@ def main():
         saved = args.output / name
         shutil.copyfile(source, saved)
         installed_hash = None
-        paths = adb('shell', 'pm', 'path', package).splitlines()
+        paths = adb('shell', 'pm', 'path', package, allow_missing=True).splitlines()
         if len(paths) == 1 and paths[0].startswith('package:'):
             remote = paths[0].removeprefix('package:')
             if re.fullmatch(r'/[A-Za-z0-9/._~+=-]+', remote):
@@ -71,7 +75,7 @@ def main():
     iterations = 3 if args.smoke else args.iterations
     print(f'Running three scenarios, {iterations} iterations each; keep the phone unlocked and avoid manual interaction.', flush=True)
     with (args.output / 'run.txt').open('w') as log:
-        result = subprocess.run([args.adb, '-s', args.serial, 'shell', 'am', 'instrument', '-w', '-r',
+        result = subprocess.run([*adb_prefix, 'shell', 'am', 'instrument', '-w', '-r',
                                  '-e', 'class', 'org.whattoeat.benchmark.MealBenchmark',
                                  '-e', 'iterations', str(iterations),
                                  'org.whattoeat.benchmark/androidx.test.runner.AndroidJUnitRunner'],

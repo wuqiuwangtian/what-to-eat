@@ -231,5 +231,108 @@
       "runner_apk_sha256": "7d07d3a3057216b04c505fad0ab0404eb1c422417add12d6051712a8dcc6bdce",
       "source_sha256": "f9e10440c4c678059fb645b434c045b97cb5dd0877bcf43df5c19ea012d388ce"
     }
+  },
+  "latest_validation": "trial_preview",
+  "trial_preview": {
+    "date": "2026-11-09",
+    "app_version": "0.1.0-dev.2",
+    "version_code": 2,
+    "jvm_tests": [
+      {
+        "name": "org.whattoeat.core.TrialRulesTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.core.RecommenderTest",
+        "tests": "14",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.app.ModelContractTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.app.ProviderTransportTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.app.PresentationTraceTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      }
+    ],
+    "python_tests": 11,
+    "emulator": {
+      "sdk": 29,
+      "result": "OK (19 tests)",
+      "duration_seconds": 45.666,
+      "large_font_scale": 2.0,
+      "large_font_result": "OK (4 tests)",
+      "font_restored": 1.0
+    },
+    "phone": {
+      "date": "2026-11-09",
+      "device_alias": "physical-1",
+      "model": "ELI-AN00",
+      "sdk": "36",
+      "schema_before": 2,
+      "schema_after": 2,
+      "original_event_count": 40,
+      "all_original_rows_unchanged": true,
+      "original_rows_sha256": "d1db86ffc50c78a396309c93e921cc220b397116d56be31382c313de8837cdab",
+      "trial_config_row_count": 0,
+      "automatic_enrollment": false,
+      "result": "OK (6 tests)",
+      "font_scale": "1.0",
+      "apk_sha256": "e66860c564f245ce610230984a18f38f3f68fd11a3cbc01c9b0388529c9a09ae",
+      "screenshots": "App roots and trial control panel only; no private preference fields or system notifications",
+      "data_cleared": false
+    },
+    "initial_phone_upgrade": {
+      "date": "2026-11-09",
+      "device_alias": "physical-1",
+      "model": "ELI-AN00",
+      "sdk": "36",
+      "schema_before": 1,
+      "schema_after": 2,
+      "original_event_count": 35,
+      "all_original_rows_unchanged": true,
+      "original_rows_sha256": "76402882ae420f97280972e33d9cd15635d56149a9513a48b79a1b7e5b0ceeda",
+      "trial_config_row_count": 0,
+      "automatic_enrollment": false,
+      "result": "OK (6 tests)",
+      "font_scale": "1.0",
+      "apk_sha256": "ab74b82fc4751d1aa3774b928c44b555caa94078bfe6634ed6b64962460c5e8e",
+      "screenshots": "App roots and trial control panel only; no private preference fields or system notifications",
+      "data_cleared": false
+    },
+    "synthetic_export_analysis": {
+      "result": "accepted",
+      "synthetic_participants": 1,
+      "real_human_effectiveness_test": false
+    },
+    "debug_apk_sha256": "e66860c564f245ce610230984a18f38f3f68fd11a3cbc01c9b0388529c9a09ae",
+    "benchmark_apk_sha256": "ef50c859fbe85bc06d56c4a429b83ce9ad1c3cea2cb3e9f1708f31186cb64f0a",
+    "benchmark_runner_sha256": "7d07d3a3057216b04c505fad0ab0404eb1c422417add12d6051712a8dcc6bdce",
+    "lint": "passed",
+    "remaining": [
+      "Current build performance remeasurement pending",
+      "Physical active trial flow pending; ordinary app remains opted out",
+      "Real provider credentials and human effectiveness",
+      "300-item catalog review and formal signing/release"
+    ]
   }
 }

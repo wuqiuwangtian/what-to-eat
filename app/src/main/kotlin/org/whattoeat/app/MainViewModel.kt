@@ -2,9 +2,12 @@ package org.whattoeat.app
 
 import android.app.Application
 import android.net.Uri
+import androidx.room.withTransaction
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -31,6 +34,8 @@ data class UiState(
     val modelName: String = "",
     val benchmark: String = "",
     val strategy: Strategy = Strategy.PERSONALIZED,
+    val trial: TrialSnapshot = TrialSnapshot(),
+    val trialPresentationPending: Boolean = false,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -39,6 +44,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val presentation = PresentationTrace()
     private val analyzer = MealAnalyzer(foods)
     private val database = MealDatabase.open(application)
+    private val trialMutex = Mutex()
+    private val trials = TrialStore(database)
+    private var pendingTrial: Pair<Int, TrialPresentation>? = null
     private val settings = SettingsStore(application)
     private val vault = SecureVault(application)
     private var modelConfig: ModelConfig? = null
@@ -53,12 +61,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val prefs = withContext(Dispatchers.IO) { settings.read() }
             val config = withContext(Dispatchers.IO) { runCatching { vault.read() }.getOrNull() }
             modelConfig = config
-            mutable.update { it.copy(preferences = prefs, modelEnabled = config != null,
+            val trial = trials.snapshot(System.currentTimeMillis())
+            trial.active?.let { sessionId = it.id; shown.addAll(TrialStore.shownIds(it)) }
+            mutable.update { it.copy(preferences = prefs, modelEnabled = config != null, trial = trial,
                 modelBaseUrl = config?.baseUrl.orEmpty(), modelName = config?.model.orEmpty()) }
             database.events().observe().collect { rows ->
                 mutable.update { it.copy(rows = rows, loading = false) }
             }
         }
+
     }
 
     private fun history() = mutable.value.rows.map(EventRow::domain)
@@ -67,27 +78,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         EventRow(UUID.randomUUID().toString(), type.name, food.id, food.name, at.toEpochMilli(), "user", 1.0, sessionId, detail)
 
     private fun action(block: suspend () -> Unit) {
+        userInteracted()
         if (mutable.value.busy || mutable.value.loading) return
         mutable.update { it.copy(busy = true, notice = "") }
         viewModelScope.launch {
-            try { block() }
+            try { trialMutex.withLock { block() } }
             catch (e: CancellationException) { throw e }
             catch (_: Exception) { mutable.update { it.copy(notice = "操作未完成，请重试；不会自动放宽限制或清空数据库。") } }
             finally { mutable.update { it.copy(busy = false) } }
         }
     }
 
-    fun recommend() = action {
-        val before = mutable.value
+    fun recommend() = if (mutable.value.trialPresentationPending) Unit else action {
+        var before = mutable.value
         val presentationId = presentation.begin(before.decision != null)
         var awaitsFrame = false
         try {
-            val events = history()
-            val request = context()
-            val decision = withContext(Dispatchers.Default) {
-                engine.recommend(foods, events, request, before.strategy)
+            val trialSession = if (before.trial.enabled) trials.prepare(System.currentTimeMillis(), foods,
+                before.preferences, before.rows.size, engine.eligible(foods, before.preferences).size) else null
+            if (trialSession != null) {
+                if (before.trial.active?.id != trialSession.id) {
+                    shown.clear()
+                    before = before.copy(decision = null)
+                    pendingTrial = null
+                }
+                sessionId = trialSession.id
+                mutable.update { it.copy(trial = TrialSnapshot(true, trialSession, hasData = true), decision = before.decision) }
             }
+            val events = history() + trialSession?.let(TrialStore::skipped).orEmpty()
+            val request = context()
+            val strategy = trialSession?.let { Strategy.valueOf(it.strategy) } ?: before.strategy
+            val decision = withContext(Dispatchers.Default) { engine.recommend(foods, events, request, strategy) }
             if (decision == null) {
+                if (trialSession != null) { trials.finish("NO_CANDIDATE", System.currentTimeMillis()); refreshTrial() }
                 mutable.update { it.copy(presentationId = presentationId, decision = null, notice = "没有符合当前限制的候选；请到设置检查限制，不会自动放宽。") }
             } else {
                 if (decision.startsNewRound) shown.clear()
@@ -99,18 +122,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     before.decision?.let { add(row(EventType.SKIPPED, it.food)) }
                     add(row(EventType.SHOWN, decision.food, detail = detail).copy(source = "recommendation"))
                 }
-                database.events().put(rows)
-                mutable.update { it.copy(presentationId = presentationId, decision = decision, notice = if (decision.startsNewRound) "这一轮都看过了，已开始新一轮。" else "") }
+                if (trialSession == null) {
+                    pendingTrial = null
+                    database.events().put(rows)
+                } else {
+                    pendingTrial = presentationId to TrialPresentation(UUID.randomUUID().toString(), trialSession.id,
+                        decision.food.id, before.rows.size, decision.algorithmVersion)
+                }
+                mutable.update { it.copy(presentationId = presentationId, decision = decision, trialPresentationPending = trialSession != null, notice = if (decision.startsNewRound) "这一轮都看过了，已开始新一轮。" else "") }
             }
             awaitsFrame = true
         } finally { if (!awaitsFrame) presentation.presented(presentationId) }
     }
 
-    fun recommendationPresented(id: Int) { presentation.presented(id) }
+    fun recommendationPresented(id: Int) {
+        presentation.presented(id)
+        pendingTrial?.takeIf { it.first == id }?.second?.let { pending ->
+            viewModelScope.launch {
+                try { trialMutex.withLock {
+                    trials.presented(pending, System.currentTimeMillis())
+                    refreshTrial()
+                    if (pendingTrial?.second?.token == pending.token) mutable.update { it.copy(trialPresentationPending = false) }
+                } }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { mutable.update { it.copy(notice = "试用展示记录未完成，请结束本次后重试。") } }
+            }
+        }
+    }
 
     fun feedback(type: EventType, food: Food) = action {
         require(type in setOf(EventType.PLANNED, EventType.EATEN, EventType.PREFERRED, EventType.DISLIKED, EventType.COMPARED))
-        database.events().put(listOf(row(type, food)))
+        val now = System.currentTimeMillis()
+        var adopted = false
+        database.withTransaction {
+            if (type == EventType.PLANNED && mutable.value.trial.enabled) {
+                pendingTrial?.second?.takeIf { it.foodId == food.id }?.let {
+                    trials.presented(it, now)
+                    adopted = trials.finish("ADOPTED", now, food.id) != null
+                }
+            }
+            database.events().put(listOf(row(type, food)))
+        }
+        if (adopted) { resetDecision(""); refreshTrial() }
         mutable.update { it.copy(notice = when (type) {
             EventType.PLANNED -> "已记录打算吃；尚未计入实际饮食。"
             EventType.EATEN -> "已记录为你确认吃过的餐食。"
@@ -122,8 +175,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun exclude(food: Food) = action {
         val prefs = mutable.value.preferences.let { it.copy(excludedFoodIds = it.excludedFoodIds + food.id) }
         withContext(Dispatchers.IO) { settings.write(prefs) }
-        shown.clear()
-        mutable.update { it.copy(preferences = prefs, decision = null, compared = null, notice = "已加入长期排除；可在设置恢复。") }
+        mutable.update { it.copy(preferences = prefs) }
+        invalidate("已加入长期排除；可在设置恢复。")
     }
 
     fun analyze(text: String, cloud: Boolean = false) {
@@ -178,11 +231,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             foodName = known?.name ?: name.trim().take(2000), time = at.toEpochMilli(), source = "user-corrected", detail = "")))
         invalidate("已修改记录，画像将在后续推荐中重新计算。")
     }
-    private fun invalidate(message: String) {
+    private suspend fun invalidate(message: String) {
+        if (mutable.value.trial.enabled) trials.finish("CONTEXT_CHANGED", System.currentTimeMillis())
+        resetDecision(message)
+        if (mutable.value.trial.enabled) refreshTrial()
+    }
+    private fun resetDecision(message: String) {
+        pendingTrial = null
         presentation.close()
         shown.clear()
         sessionId = UUID.randomUUID().toString()
-        mutable.update { it.copy(decision = null, compared = null, benchmark = "", notice = message) }
+        mutable.update { it.copy(presentationId = 0, trialPresentationPending = false, decision = null, compared = null, benchmark = "", notice = message) }
     }
 
     fun savePreferences(prefs: Preferences) = action {
@@ -190,7 +249,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         mutable.update { it.copy(preferences = prefs) }
         invalidate("设置已保存。限制依据常见配方标签，实际商家配料需自行确认。")
     }
-    fun selectStrategy(strategy: Strategy) { mutable.update { it.copy(strategy = strategy) }; invalidate("本地策略已切换。") }
+    fun selectStrategy(strategy: Strategy) = action {
+        if (!mutable.value.trial.enabled) {
+            mutable.update { it.copy(strategy = strategy) }; invalidate("本地策略已切换。")
+        }
+    }
 
     fun saveModel(base: String, model: String, key: String) = action {
         val config = ModelConfig(base.trim(), model.trim(), key.ifBlank { modelConfig?.apiKey.orEmpty() }.trim())
@@ -219,17 +282,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun clearAll() = action {
         presentation.close()
         withContext(Dispatchers.IO) { settings.clear(); vault.clear() }
-        database.events().clear()
+        database.withTransaction { database.events().clear(); trials.clear() }
+        pendingTrial = null
         modelConfig = null
         mutable.update { previous -> UiState(dataGeneration = previous.dataGeneration + 1, loading = false, busy = true, notice = "已清除本地记录、偏好与 API 配置；外部导出文件和服务商留存需另行处理。") }
         shown.clear()
         sessionId = UUID.randomUUID().toString()
     }
 
+    suspend fun checkTrialInactivity() {
+        val active = mutable.value.trial.active ?: return
+        if (mutable.value.busy || mutable.value.loading || !TrialRules.expired(active.lastActiveAt, System.currentTimeMillis())) return
+        try { trialMutex.withLock { refreshTrial() } }
+        catch (e: CancellationException) { throw e }
+        catch (_: Exception) { mutable.update { it.copy(notice = "试用状态暂时无法读取，请重试。") } }
+    }
+
+    private suspend fun refreshTrial() {
+        val old = mutable.value.trial.active?.id
+        val snapshot = trials.snapshot(System.currentTimeMillis())
+        if (old != null && old != snapshot.active?.id) resetDecision("")
+        mutable.update { it.copy(trial = snapshot) }
+    }
+
+    /** 只记交互时间；不把打开、闲置或退出推断为满意。 */
+    fun userInteracted() {
+        val active = mutable.value.trial.active ?: return
+        if (mutable.value.loading) return
+        val now = System.currentTimeMillis()
+        if (!TrialRules.expired(active.lastActiveAt, now)) {
+            mutable.update { it.copy(trial = it.trial.copy(active = it.trial.active?.copy(lastActiveAt = now))) }
+        }
+        viewModelScope.launch {
+            try { trialMutex.withLock { trials.touch(active.id, now); refreshTrial() } }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { mutable.update { it.copy(notice = "试用交互时间未保存，请重试。") } }
+        }
+    }
+    fun enrollTrial() = action { trials.enroll(); invalidate(""); refreshTrial() }
+    fun withdrawTrial() = action { trials.withdraw(System.currentTimeMillis()); resetDecision(""); refreshTrial() }
+    fun endTrialSession() = action { trials.finish("MANUAL", System.currentTimeMillis()); resetDecision(""); refreshTrial() }
+    fun deleteTrialData() = action { trials.clear(); resetDecision(""); refreshTrial() }
+    fun exportTrial(uri: Uri) = action {
+        val content = trials.export(System.currentTimeMillis())
+        withContext(Dispatchers.IO) {
+            requireNotNull(getApplication<Application>().contentResolver.openOutputStream(uri)).bufferedWriter().use { it.write(content) }
+        }
+        mutable.update { it.copy(notice = "已导出试用数据；文件包含分组方法，仅用于自愿分享和试后分析。") }
+    }
+
     /** 探索入口：展示四组输出，不计算或宣称用户效果。 */
     fun benchmarkCloud() {
         val config = modelConfig ?: return
-        if (mutable.value.busy) return
+        if (mutable.value.busy || mutable.value.trial.enabled) return
         val ctx = context().copy(shownIds = emptySet())
         val allHistory = history()
         val candidates = engine.eligible(foods, ctx.preferences)

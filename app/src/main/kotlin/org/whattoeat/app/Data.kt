@@ -29,11 +29,14 @@ interface EventDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(rows: List<EventRow>)
     @Query("DELETE FROM events WHERE id = :id") suspend fun delete(id: String)
     @Query("DELETE FROM events") suspend fun clear()
+    @Query("SELECT * FROM events ORDER BY time, id") suspend fun all(): List<EventRow>
 }
 
-@Database(entities = [EventRow::class], version = 1, exportSchema = true)
+@Database(entities = [EventRow::class, TrialConfigRow::class, TrialSessionRow::class], version = 2,
+    autoMigrations = [AutoMigration(from = 1, to = 2)], exportSchema = true)
 abstract class MealDatabase : RoomDatabase() {
     abstract fun events(): EventDao
+    abstract fun trials(): TrialDao
     companion object {
         fun open(context: Context) = Room.databaseBuilder(context, MealDatabase::class.java, "meals.db").build()
     }

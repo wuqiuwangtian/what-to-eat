@@ -9,6 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -28,6 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.whattoeat.core.*
@@ -35,6 +43,10 @@ import java.time.*
 import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        ViewModelProvider(this)[MainViewModel::class.java].userInteracted()
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (BuildConfig.BUILD_TYPE == "benchmark" && intent.getBooleanExtra("benchmark_seed", false)) {
@@ -73,6 +85,12 @@ private fun parseTime(value: String): Instant? = runCatching {
 @Composable
 private fun App(vm: MainViewModel = viewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(vm, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (isActive) { vm.checkTrialInactivity(); delay(1000) }
+        }
+    }
     ReportDrawnWhen { !state.loading }
     LaunchedEffect(state.presentationId) {
         if (state.presentationId > 0) {
@@ -90,6 +108,7 @@ private fun AppContent(state: UiState, vm: MainViewModel) {
     var page by rememberSaveable { mutableStateOf("home") }
     val pages = rememberSaveableStateHolder()
     BackHandler(enabled = page != "home") { page = "home" }
+    val trialExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::exportTrial) }
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> uri?.let(vm::export) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.notice) {
@@ -119,7 +138,7 @@ private fun AppContent(state: UiState, vm: MainViewModel) {
                             "meal" -> MealPage(state, vm)
                             "compare" -> ComparePage(state, vm)
                             "history" -> HistoryPage(state, vm, { exporter.launch("what-to-eat-records.json") })
-                            "settings" -> SettingsPage(state, vm)
+                            "settings" -> SettingsPage(state, vm) { trialExporter.launch("what-to-eat-trial.json") }
                         }
                     }
                     }
@@ -133,7 +152,7 @@ private fun AppContent(state: UiState, vm: MainViewModel) {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCompare: () -> Unit) {
-    var detailOpen by remember { mutableStateOf(false) }
+    var detailOpen by remember(state.trial.active?.id) { mutableStateOf(false) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val mainHeight = (maxHeight - 80.dp).coerceAtLeast(240.dp)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -148,14 +167,18 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("为什么推荐") }
                     Spacer(Modifier.height(32.dp))
                 }
-                Button(onClick = vm::recommend, enabled = !state.busy,
+                Button(onClick = vm::recommend, enabled = !state.busy && !state.trialPresentationPending,
                     shape = RoundedCornerShape(16.dp), modifier = Modifier.testTag("recommendButton").widthIn(min = 220.dp).heightIn(min = 56.dp)) {
                     Text(if (state.decision == null) "吃什么？" else "换一个", fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 }
                 state.decision?.let { decision ->
                     Spacer(Modifier.height(8.dp))
-                    TextButton(onClick = { vm.feedback(EventType.PLANNED, decision.food) }, enabled = !state.busy) { Text("就它了") }
+                    TextButton(onClick = { vm.feedback(EventType.PLANNED, decision.food) }, enabled = !state.busy && !state.trialPresentationPending) { Text("就它了") }
                 }
+            }
+            if (state.trial.active != null) {
+                TextButton(onClick = vm::endTrialSession, enabled = !state.busy,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("结束本次") }
             }
             FlowRow(Modifier.fillMaxWidth().padding(bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterHorizontally)) {
                 TextButton(onClick = openMeal, enabled = !state.busy,
@@ -170,7 +193,8 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(decision.food.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                decision.reasons.forEach { Text(it) }
+                if (state.trial.enabled) Text("候选符合当前原料排除和用餐场景设置。")
+                else decision.reasons.forEach { Text(it) }
                 Text("实际配料请向商家确认。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                 OutlinedButton(onClick = { vm.feedback(EventType.EATEN, decision.food) }, enabled = !state.busy) { Text("确认吃过") }
                 FlowRow {
@@ -178,11 +202,13 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
                     TextButton(onClick = { vm.feedback(EventType.DISLIKED, decision.food) }, enabled = !state.busy) { Text("不太喜欢") }
                     TextButton(onClick = { vm.exclude(decision.food); detailOpen = false }, enabled = !state.busy) { Text("长期排除") }
                 }
+                if (!state.trial.enabled) {
                 var technical by remember { mutableStateOf(false) }
                 TextButton(onClick = { technical = !technical }) { Text("决策详情") }
                 if (technical) {
                     decision.factors.forEach { (name, score) -> Text("$name：${"%.2f".format(score)}", style = MaterialTheme.typography.bodySmall) }
                     Text("${decision.algorithmVersion} · ${decision.strategy}", style = MaterialTheme.typography.bodySmall)
+                }
                 }
                 TextButton(onClick = { detailOpen = false }) { Text("收起依据") }
                 Spacer(Modifier.height(16.dp))
@@ -206,9 +232,10 @@ private fun MealTitle(name: String) {
 
 @Composable
 private fun FoodSearch(label: String, foods: List<Food>, initial: String = "", onChange: () -> Unit = {}, onSelect: (Food) -> Unit) {
+    val interactionContext = LocalContext.current
     var query by rememberSaveable { mutableStateOf(initial) }
     var selected by rememberSaveable { mutableStateOf(initial.isNotBlank()) }
-    OutlinedTextField(value = query, onValueChange = { query = it; selected = false; onChange() }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+    OutlinedTextField(value = query, onValueChange = { query = it; selected = false; (interactionContext as? MainActivity)?.onUserInteraction(); onChange() }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
     if (query.isNotBlank() && !selected) {
         val matches = foods.filter { it.name.contains(query) || it.aliases.any { alias -> alias.contains(query) } }.take(6)
         if (matches.isEmpty()) Text("暂无匹配，可换一个常见菜名。", style = MaterialTheme.typography.bodySmall)
@@ -228,13 +255,13 @@ private fun MealPage(state: UiState, vm: MainViewModel) {
     var selected by rememberSaveable(state.analysis) {
         mutableStateOf(state.analysis?.foods?.map(Food::id).orEmpty())
     }
-    OutlinedTextField(text, { text = it; vm.resetAnalysis() }, label = { Text("餐食描述") }, placeholder = { Text("例如：准备吃牛肉面") }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy)
+    OutlinedTextField(text, { text = it; vm.userInteracted(); vm.resetAnalysis() }, label = { Text("餐食描述") }, placeholder = { Text("例如：准备吃牛肉面") }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy)
     Row {
         FilterChip(selected = !eaten, onClick = { eaten = false }, label = { Text("准备吃") })
         Spacer(Modifier.width(8.dp))
         FilterChip(selected = eaten, onClick = { eaten = true }, label = { Text("已经吃过") })
     }
-    OutlinedTextField(time, { time = it }, label = { Text("时间") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+    OutlinedTextField(time, { time = it; vm.userInteracted() }, label = { Text("时间") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
     Button(onClick = { vm.analyze(text) }, enabled = text.isNotBlank() && !state.busy) { Text("看看搭配") }
     if (state.modelEnabled) TextButton(onClick = { vm.analyze(text, cloud = true) }, enabled = text.isNotBlank() && !state.busy) { Text("云端解析（上传文字）") }
     state.analysis?.let { analysis ->
@@ -281,7 +308,8 @@ private fun ComparePage(state: UiState, vm: MainViewModel) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("今天建议选", style = MaterialTheme.typography.labelLarge)
                 Text(d.food.name, style = MaterialTheme.typography.titleLarge)
-                d.reasons.forEach { Text(it) }
+                if (state.trial.enabled) Text("候选符合当前原料排除和用餐场景设置。")
+                else d.reasons.forEach { Text(it) }
                 Text("你的实际选择是？")
                 state.comparisonFoods.forEach { food ->
                     OutlinedButton(onClick = { vm.feedback(EventType.COMPARED, food) }, enabled = !state.busy) { Text("我选 ${food.name}") }
@@ -320,7 +348,7 @@ private fun HistoryPage(state: UiState, vm: MainViewModel, export: () -> Unit) {
                     TextButton(onClick = { expanded = !expanded }) { Text("详情") }
                     if (expanded) {
                         Text("来源：${row.source} · 置信度 ${row.confidence}", style = MaterialTheme.typography.bodySmall)
-                        if (row.detail.isNotBlank()) Text(row.detail, style = MaterialTheme.typography.bodySmall)
+                        if (row.detail.isNotBlank() && !state.trial.enabled) Text(row.detail, style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 Row {
@@ -365,15 +393,15 @@ private fun EditDialog(row: EventRow, foods: List<Food>, onDismiss: () -> Unit, 
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SettingsPage(state: UiState, vm: MainViewModel) {
+private fun SettingsPage(state: UiState, vm: MainViewModel, exportTrial: () -> Unit) {
     Text("偏好与数据", style = MaterialTheme.typography.headlineMedium)
     var excluded by remember(state.preferences) { mutableStateOf(state.preferences.excludedIngredients.joinToString(",")) }
     var preferred by remember(state.preferences) { mutableStateOf(state.preferences.preferredGroups.joinToString(",")) }
     var context by remember(state.preferences) { mutableStateOf(state.preferences.context) }
     var learning by remember(state.preferences) { mutableStateOf(state.preferences.learningEnabled) }
-    OutlinedTextField(excluded, { excluded = it }, label = { Text("不吃的原料") }, placeholder = { Text("例如：花生,虾") }, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(excluded, { excluded = it; vm.userInteracted() }, label = { Text("不吃的原料") }, placeholder = { Text("例如：花生,虾") }, modifier = Modifier.fillMaxWidth())
     Text("按常见配方过滤；过敏者仍需确认实际配料及交叉接触。", style = MaterialTheme.typography.bodySmall)
-    OutlinedTextField(preferred, { preferred = it }, label = { Text("口味偏好") }, placeholder = { Text("例如：家常,面食,清淡") }, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(preferred, { preferred = it; vm.userInteracted() }, label = { Text("口味偏好") }, placeholder = { Text("例如：家常,面食,清淡") }, modifier = Modifier.fillMaxWidth())
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("外卖", "食堂", "自炊").forEach { item -> FilterChip(context == item, { context = item }, label = { Text(item) }) }
     }
@@ -393,14 +421,17 @@ private fun SettingsPage(state: UiState, vm: MainViewModel) {
     var model by remember(state.modelName) { mutableStateOf(state.modelName) }
     var key by remember { mutableStateOf("") }
     var consent by remember { mutableStateOf(false) }
-    OutlinedTextField(base, { base = it }, label = { Text("HTTPS 基础地址（含 /v1）") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-    OutlinedTextField(model, { model = it }, label = { Text("模型名称") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-    OutlinedTextField(key, { key = it }, label = { Text(if (state.modelEnabled) "API Key（留空保留已存密钥）" else "API Key") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), singleLine = true)
+    OutlinedTextField(base, { base = it; vm.userInteracted() }, label = { Text("HTTPS 基础地址（含 /v1）") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+    OutlinedTextField(model, { model = it; vm.userInteracted() }, label = { Text("模型名称") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+    OutlinedTextField(key, { key = it; vm.userInteracted() }, label = { Text(if (state.modelEnabled) "API Key（留空保留已存密钥）" else "API Key") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), singleLine = true)
     Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(consent, { consent = it }); Text("我了解数据将发往该提供商，并自行承担调用费用。", Modifier.weight(1f)) }
     Button(onClick = { vm.saveModel(base, model, key); key = "" }, enabled = consent && !state.busy) { Text("保存并启用云端配置") }
     if (state.modelEnabled) TextButton(onClick = vm::disableModel, enabled = !state.busy) { Text("关闭云端并删除密钥") }
     }
     HorizontalDivider()
+    TrialControls(state, vm, exportTrial)
+    HorizontalDivider()
+    if (!state.trial.enabled) {
     var toolsExpanded by rememberSaveable { mutableStateOf(false) }
     TextButton(onClick = { toolsExpanded = !toolsExpanded }) { Text("验证工具") }
     if (toolsExpanded) {
@@ -417,6 +448,7 @@ private fun SettingsPage(state: UiState, vm: MainViewModel) {
     if (state.benchmark.isNotBlank()) Text(state.benchmark)
     }
     HorizontalDivider()
+    }
     var clearing by remember { mutableStateOf(false) }
     TextButton(onClick = { clearing = true }, enabled = !state.busy) { Text("清除全部本地数据") }
     if (clearing) AlertDialog(onDismissRequest = { clearing = false }, title = { Text("清除全部本地数据？") },
@@ -433,4 +465,35 @@ private fun SettingsPage(state: UiState, vm: MainViewModel) {
     licenses?.let { content -> AlertDialog(onDismissRequest = { licenses = null }, title = { Text("开源许可与归属") },
         text = { Text(content, Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall) },
         confirmButton = { TextButton(onClick = { licenses = null }) { Text("关闭") } }) }
+}
+
+@Composable
+private fun TrialControls(state: UiState, vm: MainViewModel, exportTrial: () -> Unit) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().testTag("trialControls"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        TextButton(onClick = { expanded = !expanded }) { Text("本地试用 · ${if (state.trial.enabled) "已参加" else "未参加"}") }
+        if (expanded) {
+            Text("试用不同的本地推荐方法。展示、选择和会话结束仅存本机，不自动上传，可退出或删除。选定只记计划并结束本次；也可主动结束，或闲置30分钟自动结束。")
+            if (state.trial.enabled) {
+                TextButton(onClick = vm::withdrawTrial, enabled = !state.busy) { Text("退出试用") }
+            } else {
+                var consent by rememberSaveable { mutableStateOf(false) }
+                Row(Modifier.toggleable(value = consent, role = Role.Checkbox, onValueChange = { consent = it }),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(consent, null); Text("我愿意参加本地试用")
+                }
+                Button(onClick = { vm.enrollTrial(); consent = false }, enabled = consent && !state.busy) { Text("加入试用") }
+            }
+            if (state.trial.hasData) {
+                Text("导出包含随机参与者编号、餐食ID和分组方法，可能揭示推荐方法；仅在自愿分享或试后分析时导出。")
+                OutlinedButton(onClick = exportTrial, enabled = !state.busy) { Text("导出试用数据") }
+                var deleting by remember { mutableStateOf(false) }
+                TextButton(onClick = { deleting = true }, enabled = !state.busy) { Text("删除试用数据") }
+                if (deleting) AlertDialog(onDismissRequest = { deleting = false }, title = { Text("删除试用数据？") },
+                    text = { Text("删除试用会话和分组并退出试用，保留餐食记录。已导出的文件需自行删除。") },
+                    confirmButton = { TextButton(onClick = { vm.deleteTrialData(); deleting = false }) { Text("删除") } },
+                    dismissButton = { TextButton(onClick = { deleting = false }) { Text("取消") } })
+            }
+        }
+    }
 }

@@ -19,7 +19,7 @@ internal fun seedBenchmarkHistory(context: Context) {
                 now - (index + 1L) * 3600_000L, "benchmark-fixture", 1.0, null)
         }
         val db = MealDatabase.open(context)
-        try { db.withTransaction { db.events().clear(); db.events().put(rows) } }
+        try { db.withTransaction { db.trials().clearSessions(); db.trials().clearConfig(); db.events().clear(); db.events().put(rows) } }
         finally { db.close() }
     }
 }
