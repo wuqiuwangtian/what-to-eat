@@ -132,13 +132,14 @@ private fun AppContent(state: UiState, vm: MainViewModel) {
                     if (state.loading) CircularProgressIndicator(Modifier.align(Alignment.Center))
                     else if (page == "home") Home(state, vm,
                         { vm.resetAnalysis(); page = "meal" }, { vm.resetComparison(); page = "compare" })
+                    else if (page == "library") FoodLibraryPage(state, vm)
                     else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 24.dp, bottom = 32.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         when (page) {
                             "meal" -> MealPage(state, vm)
                             "compare" -> ComparePage(state, vm)
                             "history" -> HistoryPage(state, vm, { exporter.launch("what-to-eat-records.json") })
-                            "settings" -> SettingsPage(state, vm) { trialExporter.launch("what-to-eat-trial.json") }
+                            "settings" -> SettingsPage(state, vm, { page = "library" }) { trialExporter.launch("what-to-eat-trial.json") }
                         }
                     }
                     }
@@ -154,7 +155,7 @@ private fun AppContent(state: UiState, vm: MainViewModel) {
 private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCompare: () -> Unit) {
     var detailOpen by remember(state.trial.active?.id) { mutableStateOf(false) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val mainHeight = (maxHeight - 80.dp).coerceAtLeast(240.dp)
+        val mainHeight = (maxHeight - 80.dp).coerceAtLeast(120.dp)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
             Column(Modifier.fillMaxWidth().heightIn(min = mainHeight).padding(vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -167,7 +168,7 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("为什么推荐") }
                     Spacer(Modifier.height(32.dp))
                 }
-                Button(onClick = vm::recommend, enabled = !state.busy && !state.trialPresentationPending,
+                Button(onClick = { vm.recommend() }, enabled = !state.busy && !state.trialPresentationPending,
                     shape = RoundedCornerShape(16.dp), modifier = Modifier.testTag("recommendButton").widthIn(min = 220.dp).heightIn(min = 56.dp)) {
                     Text(if (state.decision == null) "吃什么？" else "换一个", fontSize = 18.sp, fontWeight = FontWeight.Medium)
                 }
@@ -176,6 +177,8 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
                     TextButton(onClick = { vm.feedback(EventType.PLANNED, decision.food) }, enabled = !state.busy && !state.trialPresentationPending) { Text("就它了") }
                 }
             }
+            TextButton(onClick = { vm.recommend(true) }, enabled = !state.busy && !state.trialPresentationPending,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("想换换口味") }
             if (state.trial.active != null) {
                 TextButton(onClick = vm::endTrialSession, enabled = !state.busy,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.secondary)) { Text("结束本次") }
@@ -200,7 +203,9 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
                 FlowRow {
                     TextButton(onClick = { vm.feedback(EventType.PREFERRED, decision.food) }, enabled = !state.busy) { Text("我喜欢") }
                     TextButton(onClick = { vm.feedback(EventType.DISLIKED, decision.food) }, enabled = !state.busy) { Text("不太喜欢") }
-                    TextButton(onClick = { vm.exclude(decision.food); detailOpen = false }, enabled = !state.busy) { Text("长期排除") }
+                    TextButton(onClick = { vm.favoriteFood(decision.food, true); detailOpen = false }, enabled = !state.busy) { Text("加入常吃") }
+                    TextButton(onClick = { vm.unavailableNow(decision.food); detailOpen = false }, enabled = !state.busy && !state.trialPresentationPending) { Text("这次不方便吃") }
+                    TextButton(onClick = { vm.hideFood(decision.food, true); detailOpen = false }, enabled = !state.busy) { Text("不再推荐") }
                 }
                 if (!state.trial.enabled) {
                 var technical by remember { mutableStateOf(false) }
@@ -217,28 +222,24 @@ private fun Home(state: UiState, vm: MainViewModel, openMeal: () -> Unit, openCo
     }
 }
 
-/** 在餐食组成之间分行，避免将“米饭”等词拆成孤立单字。 */
 @Composable
 private fun MealTitle(name: String) {
-    val parts = name.split("配", limit = 2)
-    Text(parts.first(), Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+    Text(name, Modifier.fillMaxWidth().padding(horizontal = 12.dp),
         fontSize = 30.sp, lineHeight = 42.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-    if (parts.size == 2) {
-        Spacer(Modifier.height(8.dp))
-        Text("配${parts[1]}", Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-            fontSize = 22.sp, lineHeight = 32.sp, textAlign = TextAlign.Center)
-    }
 }
 
 @Composable
-private fun FoodSearch(label: String, foods: List<Food>, initial: String = "", onChange: () -> Unit = {}, onSelect: (Food) -> Unit) {
+private fun FoodSearch(label: String, foods: List<Food>, initial: String = "", onChange: () -> Unit = {}, onAdd: ((String) -> Unit)? = null, onSelect: (Food) -> Unit) {
     val interactionContext = LocalContext.current
     var query by rememberSaveable { mutableStateOf(initial) }
     var selected by rememberSaveable { mutableStateOf(initial.isNotBlank()) }
     OutlinedTextField(value = query, onValueChange = { query = it; selected = false; (interactionContext as? MainActivity)?.onUserInteraction(); onChange() }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
     if (query.isNotBlank() && !selected) {
         val matches = foods.filter { it.name.contains(query) || it.aliases.any { alias -> alias.contains(query) } }.take(6)
-        if (matches.isEmpty()) Text("暂无匹配，可换一个常见菜名。", style = MaterialTheme.typography.bodySmall)
+        if (matches.isEmpty()) {
+            if (onAdd != null) TextButton(onClick = { onAdd(query) }) { Text("添加这道菜") }
+            else Text("暂无匹配，可换一个常见菜名。", style = MaterialTheme.typography.bodySmall)
+        }
         matches.forEach { food ->
             TextButton(onClick = { query = food.name; selected = true; onSelect(food) }) { Text(food.name) }
         }
@@ -248,6 +249,8 @@ private fun FoodSearch(label: String, foods: List<Food>, initial: String = "", o
 @Composable
 private fun MealPage(state: UiState, vm: MainViewModel) {
     Text("看看这顿", style = MaterialTheme.typography.headlineMedium)
+    var adding by rememberSaveable { mutableStateOf<String?>(null) }
+    if (adding != null) FoodEditor(null, adding.orEmpty(), true, vm, { adding = null })
     var text by rememberSaveable { mutableStateOf("") }
     var eaten by rememberSaveable { mutableStateOf(false) }
     var positive by rememberSaveable { mutableStateOf(false) }
@@ -268,7 +271,10 @@ private fun MealPage(state: UiState, vm: MainViewModel) {
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("核对识别结果", fontWeight = FontWeight.Bold)
-                if (analysis.foods.isEmpty()) Text("未识别到已知餐食；可保留原文，不推测组成。")
+                if (analysis.foods.isEmpty()) {
+                    Text("未识别到已知餐食；可保留原文，不推测组成。")
+                    TextButton(onClick = { adding = text.take(80) }) { Text("添加到菜品库") }
+                }
                 analysis.foods.forEach { food ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(food.id in selected, { checked -> selected = if (checked) (selected + food.id).distinct() else selected - food.id })
@@ -278,7 +284,7 @@ private fun MealPage(state: UiState, vm: MainViewModel) {
                 analysis.suggestions.forEach { Text(it) }
                 Text("仅供一般搭配参考，不提供疾病膳食方案。", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary)
-                FoodSearch("补充／纠正菜名", vm.foods) { food -> selected = (selected + food.id).distinct() }
+                FoodSearch("补充／纠正菜名", vm.foods, onAdd = { adding = it }) { food -> selected = (selected + food.id).distinct() }
                 selected.filter { id -> analysis.foods.none { it.id == id } }.forEach { id ->
                     TextButton(onClick = { selected = selected - id }) { Text("已添加：${vm.foods.first { it.id == id }.name}（点此移除）") }
                 }
@@ -298,10 +304,12 @@ private fun MealPage(state: UiState, vm: MainViewModel) {
 @Composable
 private fun ComparePage(state: UiState, vm: MainViewModel) {
     Text("帮我二选一", style = MaterialTheme.typography.headlineMedium)
+    var adding by rememberSaveable { mutableStateOf<String?>(null) }
+    if (adding != null) FoodEditor(null, adding.orEmpty(), true, vm, { adding = null })
     var first by rememberSaveable { mutableStateOf<String?>(null) }
     var second by rememberSaveable { mutableStateOf<String?>(null) }
-    FoodSearch("第一道菜", vm.foods, onChange = { first = null; vm.resetComparison() }) { first = it.id; vm.resetComparison() }
-    FoodSearch("第二道菜", vm.foods, onChange = { second = null; vm.resetComparison() }) { second = it.id; vm.resetComparison() }
+    FoodSearch("第一道菜", vm.foods, onChange = { first = null; vm.resetComparison() }, onAdd = { adding = it }) { first = it.id; vm.resetComparison() }
+    FoodSearch("第二道菜", vm.foods, onChange = { second = null; vm.resetComparison() }, onAdd = { adding = it }) { second = it.id; vm.resetComparison() }
     Button(onClick = { vm.compare(first.orEmpty(), second.orEmpty()) }, enabled = first != null && second != null && first != second && !state.busy) { Text("帮我选一个") }
     state.compared?.let { d ->
         Card(Modifier.fillMaxWidth()) {
@@ -393,8 +401,9 @@ private fun EditDialog(row: EventRow, foods: List<Food>, onDismiss: () -> Unit, 
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SettingsPage(state: UiState, vm: MainViewModel, exportTrial: () -> Unit) {
+private fun SettingsPage(state: UiState, vm: MainViewModel, openLibrary: () -> Unit, exportTrial: () -> Unit) {
     Text("偏好与数据", style = MaterialTheme.typography.headlineMedium)
+    TextButton(onClick = openLibrary) { Text("菜品库") }
     var excluded by remember(state.preferences) { mutableStateOf(state.preferences.excludedIngredients.joinToString(",")) }
     var preferred by remember(state.preferences) { mutableStateOf(state.preferences.preferredGroups.joinToString(",")) }
     var context by remember(state.preferences) { mutableStateOf(state.preferences.context) }
@@ -415,7 +424,7 @@ private fun SettingsPage(state: UiState, vm: MainViewModel, exportTrial: () -> U
     var modelExpanded by rememberSaveable { mutableStateOf(false) }
     TextButton(onClick = { modelExpanded = !modelExpanded }) { Text("云端模型 · ${if (state.modelEnabled) "已配置" else "未启用"}") }
     if (modelExpanded) {
-    Text("应用不提供模型服务。启用后，主动点击解析会把该段文字与菜品库发送给你指定的提供商，可能产生费用；普通推荐与换选不联网。")
+    Text("应用不提供模型服务。启用后，主动点击解析会把该段文字与菜品库（含自建菜名）发送给你指定的提供商，可能产生费用；普通推荐与换选不联网。")
     Text("当前：${if (state.modelEnabled) "已配置 ${state.modelName}" else "关闭"}")
     var base by remember(state.modelBaseUrl) { mutableStateOf(state.modelBaseUrl) }
     var model by remember(state.modelName) { mutableStateOf(state.modelName) }
@@ -452,7 +461,7 @@ private fun SettingsPage(state: UiState, vm: MainViewModel, exportTrial: () -> U
     var clearing by remember { mutableStateOf(false) }
     TextButton(onClick = { clearing = true }, enabled = !state.busy) { Text("清除全部本地数据") }
     if (clearing) AlertDialog(onDismissRequest = { clearing = false }, title = { Text("清除全部本地数据？") },
-        text = { Text("将删除记录、偏好与 API 配置，无法撤销。已导出的文件和第三方服务商留存不会随之删除。") },
+        text = { Text("将删除记录、个人菜品库、偏好与 API 配置，无法撤销。已导出的文件和第三方服务商留存不会随之删除。") },
         confirmButton = { TextButton(onClick = { vm.clearAll(); clearing = false }) { Text("确认清除") } },
         dismissButton = { TextButton(onClick = { clearing = false }) { Text("取消") } })
     val appContext = LocalContext.current

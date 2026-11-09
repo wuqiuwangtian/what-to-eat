@@ -143,7 +143,7 @@ def main():
             shutil.copyfile(checkout / source, bundle / name)
         review_materials(checkout, bundle)
         manifest = {'format_version': 1, 'kind': 'development-preview', 'source_revision': revision,
-                    'apk': metadata, 'protocol': 'local-crossover-v1', 'human_review_complete': False,
+                    'apk': metadata, 'protocol': 'local-crossover-v1', 'pool_policy': 'personal-pool-v1', 'human_review_complete': False,
                     'catalog_sha256': sha256(checkout / 'core/src/main/resources/foods.tsv'),
                     'clean_checkout_build': True, 'build_commands': commands,
                     'files': {str(p.relative_to(bundle)): sha256(p) for p in sorted(bundle.rglob('*')) if p.is_file()}}

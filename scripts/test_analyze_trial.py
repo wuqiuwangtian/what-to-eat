@@ -57,3 +57,16 @@ class TrialAnalysisTest(unittest.TestCase):
         with self.assertRaises(ValueError): analyze([data])
         data = fixture(); data['sessions'][0]['presentations'][0]['elapsedMs'] = True
         with self.assertRaises(ValueError): analyze([data])
+
+
+class PoolOriginTest(unittest.TestCase):
+    def test_origin_is_counted_as_presentations_and_invalid_source_is_rejected(self):
+        data = fixture()
+        for session in data['sessions']:
+            for shown in session['presentations']:
+                shown.update(poolSource='FAMILIAR', poolCandidateCount=5, poolVersion='personal-pool-v1')
+        result = analyze([data])
+        self.assertEqual({'FAMILIAR': 1}, result['strata'][0]['methods']['RANDOM']['presentation_pool_sources'])
+        data['sessions'][0]['presentations'][0]['poolSource'] = 'invented'
+        with self.assertRaises(ValueError):
+            analyze([data])

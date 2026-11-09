@@ -11,7 +11,8 @@ data class Food(
     val groups: Set<String>,
     val contexts: Set<String>,
     val aliases: Set<String> = emptySet(),
-    val source: String = "project-curated-v1",
+    val source: String = "project-curated-v2",
+    val ingredientsKnown: Boolean = true,
 )
 
 enum class EventType { SHOWN, SKIPPED, PLANNED, EATEN, ORDERED, PREFERRED, DISLIKED, COMPARED }
@@ -23,6 +24,7 @@ data class MealEvent(
     val source: String = "user",
     val confidence: Double = 1.0,
     val sessionId: String? = null,
+    val groupsSnapshot: Set<String>? = null,
 ) {
     init { require(confidence in 0.0..1.0) }
 }
@@ -52,14 +54,16 @@ data class Decision(
 )
 
 object Catalog {
-    fun load(): List<Food> = requireNotNull(Catalog::class.java.getResourceAsStream("/foods.tsv")) {
+    fun load(): List<Food> = loadResource("foods.tsv")
+    fun legacy(): List<Food> = loadResource("foods-legacy-v1.tsv")
+    private fun loadResource(resource: String): List<Food> = requireNotNull(Catalog::class.java.getResourceAsStream("/$resource")) {
         "Missing bundled food catalog"
     }.bufferedReader().useLines { lines ->
         lines.filter { it.isNotBlank() && !it.startsWith("#") }.map { line ->
             val cells = line.split('\t')
             require(cells.size == 6) { "Invalid catalog row" }
             fun values(i: Int) = cells[i].split(',').filter(String::isNotBlank).toSet()
-            Food(cells[0], cells[1], values(2), values(3), values(4), values(5))
+            Food(cells[0], cells[1], values(2), values(3) - "配料不定", values(4), values(5), ingredientsKnown = "配料不定" !in values(3))
         }.toList().also { foods ->
             require(foods.isNotEmpty() && foods.map { it.id }.distinct().size == foods.size)
             require(foods.all { it.ingredients.isNotEmpty() && it.contexts.isNotEmpty() })

@@ -23,6 +23,7 @@ data class UiState(
     val loading: Boolean = true,
     val busy: Boolean = false,
     val rows: List<EventRow> = emptyList(),
+    val library: LibrarySnapshot = LibrarySnapshot(),
     val preferences: Preferences = Preferences(),
     val decision: Decision? = null,
     val analysis: MealAnalysis? = null,
@@ -39,13 +40,17 @@ data class UiState(
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
-    val foods = Catalog.load()
+    val foods get() = mutable.value.library.visible
+    private val legacyFoods = Catalog.legacy()
+    private val historyFoods get() = mutable.value.library.all + legacyFoods
     private val engine = Recommender()
     private val presentation = PresentationTrace()
-    private val analyzer = MealAnalyzer(foods)
+    private val analyzer get() = MealAnalyzer(foods)
     private val database = MealDatabase.open(application)
     private val trialMutex = Mutex()
     private val trials = TrialStore(database)
+    private val library = FoodLibrary(database)
+    private var poolRound = LibraryRound()
     private var pendingTrial: Pair<Int, TrialPresentation>? = null
     private val settings = SettingsStore(application)
     private val vault = SecureVault(application)
@@ -58,12 +63,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
-            val prefs = withContext(Dispatchers.IO) { settings.read() }
+            var prefs = withContext(Dispatchers.IO) { settings.read() }
+            if (prefs.excludedFoodIds.isNotEmpty()) {
+                val matching = library.snapshot().all.filter { it.id in prefs.excludedFoodIds }
+                database.withTransaction { matching.forEach { library.hide(it, true) } }
+                prefs = prefs.copy(excludedFoodIds = prefs.excludedFoodIds - matching.map { it.id }.toSet())
+                withContext(Dispatchers.IO) { settings.write(prefs) }
+            }
             val config = withContext(Dispatchers.IO) { runCatching { vault.read() }.getOrNull() }
             modelConfig = config
+            val personal = library.snapshot()
             val trial = trials.snapshot(System.currentTimeMillis())
+            poolRound = database.library().round() ?: LibraryRound()
+            if (trial.active == null && System.currentTimeMillis() - poolRound.lastAt < TrialRules.IDLE_MILLIS) {
+                sessionId = poolRound.sessionId.ifBlank { sessionId }; shown.addAll(FoodCodec.strings(JSONArray(poolRound.shown)))
+            }
             trial.active?.let { sessionId = it.id; shown.addAll(TrialStore.shownIds(it)) }
-            mutable.update { it.copy(preferences = prefs, modelEnabled = config != null, trial = trial,
+            mutable.update { it.copy(library = personal, preferences = prefs, modelEnabled = config != null, trial = trial,
                 modelBaseUrl = config?.baseUrl.orEmpty(), modelName = config?.model.orEmpty()) }
             database.events().observe().collect { rows ->
                 mutable.update { it.copy(rows = rows, loading = false) }
@@ -75,7 +91,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun history() = mutable.value.rows.map(EventRow::domain)
     private fun context() = RequestContext(preferences = mutable.value.preferences, shownIds = shown.toSet(), sessionId = sessionId)
     private fun row(type: EventType, food: Food, at: Instant = Instant.now(), detail: String = "") =
-        EventRow(UUID.randomUUID().toString(), type.name, food.id, food.name, at.toEpochMilli(), "user", 1.0, sessionId, detail)
+        EventRow(UUID.randomUUID().toString(), type.name, food.id, food.name, at.toEpochMilli(), "user", 1.0, sessionId, detail, JSONArray(food.groups.sorted()).toString())
 
     private fun action(block: suspend () -> Unit) {
         userInteracted()
@@ -89,13 +105,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun recommend() = if (mutable.value.trialPresentationPending) Unit else action {
+    fun recommend(forceExplore: Boolean = false) = if (mutable.value.trialPresentationPending) Unit else action {
         var before = mutable.value
+        val now = System.currentTimeMillis()
+        if (!before.trial.enabled && now - poolRound.lastAt >= TrialRules.IDLE_MILLIS) resetDecision("")
+        before = mutable.value
         val presentationId = presentation.begin(before.decision != null)
         var awaitsFrame = false
         try {
             val trialSession = if (before.trial.enabled) trials.prepare(System.currentTimeMillis(), foods,
-                before.preferences, before.rows.size, engine.eligible(foods, before.preferences).size) else null
+                before.preferences, before.rows.size, engine.eligible(foods, before.preferences).size, libraryKey = libraryFingerprint()) else null
             if (trialSession != null) {
                 if (before.trial.active?.id != trialSession.id) {
                     shown.clear()
@@ -105,19 +124,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 sessionId = trialSession.id
                 mutable.update { it.copy(trial = TrialSnapshot(true, trialSession, hasData = true), decision = before.decision) }
             }
-            val events = history() + trialSession?.let(TrialStore::skipped).orEmpty()
+            if (poolRound.sessionId != sessionId) poolRound = LibraryRound(sessionId = sessionId, draws = poolRound.draws)
+            val pool = PersonalPool.select(engine.eligible(foods, before.preferences), before.library.favoriteIds, shown,
+                FoodCodec.strings(JSONArray(poolRound.unavailable)), poolRound.draws, poolRound.explored, forceExplore)
             val request = context()
             val strategy = trialSession?.let { Strategy.valueOf(it.strategy) } ?: before.strategy
-            val decision = withContext(Dispatchers.Default) { engine.recommend(foods, events, request, strategy) }
+            val decision = withContext(Dispatchers.Default) {
+                val events = before.rows.map(EventRow::domain) + trialSession?.let(TrialStore::skipped).orEmpty()
+                engine.recommend(pool.foods, events, request, strategy, historyFoods)
+            }
             if (decision == null) {
                 if (trialSession != null) { trials.finish("NO_CANDIDATE", System.currentTimeMillis()); refreshTrial() }
                 mutable.update { it.copy(presentationId = presentationId, decision = null, notice = "没有符合当前限制的候选；请到设置检查限制，不会自动放宽。") }
             } else {
                 if (decision.startsNewRound) shown.clear()
                 shown += decision.food.id
+                poolRound = poolRound.copy(shown = JSONArray(shown.toList()).toString(), draws = poolRound.draws + 1,
+                    explored = poolRound.explored || pool.source.endsWith("DISCOVERY"), lastAt = now)
+                database.library().putRound(poolRound)
                 val detail = JSONObject().put("algorithmVersion", decision.algorithmVersion).put("strategy", decision.strategy.name)
                     .put("score", decision.score).put("factors", JSONObject(decision.factors))
-                    .put("reasons", JSONArray(decision.reasons)).put("candidateCount", engine.eligible(foods, before.preferences).size).toString()
+                    .put("reasons", JSONArray(decision.reasons)).put("candidateCount", pool.foods.size).put("poolSource", pool.source).put("poolVersion", PersonalPool.VERSION).toString()
                 val rows = buildList {
                     before.decision?.let { add(row(EventType.SKIPPED, it.food)) }
                     add(row(EventType.SHOWN, decision.food, detail = detail).copy(source = "recommendation"))
@@ -127,7 +154,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     database.events().put(rows)
                 } else {
                     pendingTrial = presentationId to TrialPresentation(UUID.randomUUID().toString(), trialSession.id,
-                        decision.food.id, before.rows.size, decision.algorithmVersion)
+                        decision.food.id, before.rows.size, decision.algorithmVersion, pool.source, pool.foods.size)
                 }
                 mutable.update { it.copy(presentationId = presentationId, decision = decision, trialPresentationPending = trialSession != null, notice = if (decision.startsNewRound) "这一轮都看过了，已开始新一轮。" else "") }
             }
@@ -163,7 +190,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             database.events().put(listOf(row(type, food)))
         }
-        if (adopted) { resetDecision(""); refreshTrial() }
+        if (adopted || (type == EventType.PLANNED && !mutable.value.trial.enabled)) { resetDecision(""); refreshTrial() }
         mutable.update { it.copy(notice = when (type) {
             EventType.PLANNED -> "已记录打算吃；尚未计入实际饮食。"
             EventType.EATEN -> "已记录为你确认吃过的餐食。"
@@ -228,19 +255,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         require(type != EventType.EATEN || !at.isAfter(Instant.now().plusSeconds(300)))
         val known = foods.find { it.id == foodId }
         database.events().put(listOf(row.copy(type = type.name, foodId = known?.id ?: "custom:${row.id}",
-            foodName = known?.name ?: name.trim().take(2000), time = at.toEpochMilli(), source = "user-corrected", detail = "")))
+            foodName = known?.name ?: name.trim().take(2000), time = at.toEpochMilli(), source = "user-corrected", detail = "", groupsSnapshot = JSONArray(known?.groups?.sorted().orEmpty()).toString())))
         invalidate("已修改记录，画像将在后续推荐中重新计算。")
     }
     private suspend fun invalidate(message: String) {
+        modelJob?.cancel()
+        mutable.update { it.copy(analysis = null, comparisonFoods = emptyList()) }
         if (mutable.value.trial.enabled) trials.finish("CONTEXT_CHANGED", System.currentTimeMillis())
         resetDecision(message)
         if (mutable.value.trial.enabled) refreshTrial()
     }
-    private fun resetDecision(message: String) {
+    private suspend fun resetDecision(message: String) {
         pendingTrial = null
         presentation.close()
         shown.clear()
         sessionId = UUID.randomUUID().toString()
+        poolRound = LibraryRound(sessionId = sessionId, draws = poolRound.draws)
+        database.library().putRound(poolRound)
         mutable.update { it.copy(presentationId = 0, trialPresentationPending = false, decision = null, compared = null, benchmark = "", notice = message) }
     }
 
@@ -253,6 +284,52 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (!mutable.value.trial.enabled) {
             mutable.update { it.copy(strategy = strategy) }; invalidate("本地策略已切换。")
         }
+    }
+
+    private fun libraryFingerprint(): String = mutable.value.library.rows.sortedBy { it.id }.joinToString("|") {
+        "${it.id}:${it.favorite}:${it.hidden}:${it.foodJson}"
+    }
+    private suspend fun libraryChanged(message: String) {
+        mutable.update { it.copy(library = library.snapshot()) }
+        invalidate(message)
+    }
+    fun saveFood(food: Food, favorite: Boolean, onSaved: () -> Unit = {}) = action {
+        if (mutable.value.library.all.any { it.id != food.id && it.name.equals(food.name.trim(), true) }) {
+            mutable.update { it.copy(notice = "已有同名菜品，请搜索后编辑或恢复。") }
+        } else { library.save(food, favorite); libraryChanged(""); onSaved() }
+    }
+    fun favoriteFood(food: Food, favorite: Boolean) = action {
+        library.favorite(food, favorite); libraryChanged("")
+    }
+    fun hideFood(food: Food, hidden: Boolean) = action {
+        library.hide(food, hidden); libraryChanged("")
+    }
+    fun restoreFood(food: Food) = action { library.restore(food); libraryChanged("") }
+    fun unavailableNow(food: Food) = action {
+        val unavailable = FoodCodec.strings(JSONArray(poolRound.unavailable)) + food.id
+        poolRound = poolRound.copy(unavailable = JSONArray(unavailable.toList()).toString(), lastAt = System.currentTimeMillis())
+        database.library().putRound(poolRound)
+        mutable.update { it.copy(decision = null, notice = "本轮不再推荐；不会记为不喜欢。") }
+    }
+    fun exportLibrary(uri: Uri) = action {
+        val content = library.export()
+        withContext(Dispatchers.IO) { requireNotNull(getApplication<Application>().contentResolver.openOutputStream(uri)).bufferedWriter().use { it.write(content) } }
+        mutable.update { it.copy(notice = "已备份菜品库，含自建名称与原料，不含饮食记录或密钥。") }
+    }
+    fun importLibrary(uri: Uri) = action {
+        try {
+            val bytes = withContext(Dispatchers.IO) { requireNotNull(getApplication<Application>().contentResolver.openInputStream(uri)).use { input ->
+                val out = java.io.ByteArrayOutputStream(); val buffer = ByteArray(8192)
+                while (out.size() <= 1_000_000) {
+                    val read = input.read(buffer, 0, minOf(buffer.size, 1_000_001 - out.size()))
+                    if (read < 0) break
+                    out.write(buffer, 0, read)
+                }; out.toByteArray()
+            } }
+            require(bytes.size <= 1_000_000)
+            library.import(bytes.toString(Charsets.UTF_8)); libraryChanged("已合并菜品库；未改变饮食记录。")
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) { mutable.update { it.copy(notice = "未导入：文件无效、过大或与现有条目冲突；没有覆盖现有菜品。") } }
     }
 
     fun saveModel(base: String, model: String, key: String) = action {
@@ -273,19 +350,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     fun export(uri: Uri) = action {
-        val content = DataExport.encode(mutable.value.rows, mutable.value.preferences)
+        val content = DataExport.encode(mutable.value.rows, mutable.value.preferences, JSONObject(library.export()))
         withContext(Dispatchers.IO) {
             requireNotNull(getApplication<Application>().contentResolver.openOutputStream(uri)).bufferedWriter().use { it.write(content) }
         }
-        mutable.update { it.copy(notice = "已导出记录与设置，不含 API Key。导出文件可能包含个人饮食信息，请妥善保管。") }
+        mutable.update { it.copy(notice = "已导出记录、设置与菜品库，不含 API Key。导出文件可能包含个人饮食信息，请妥善保管。") }
     }
     fun clearAll() = action {
         presentation.close()
         withContext(Dispatchers.IO) { settings.clear(); vault.clear() }
-        database.withTransaction { database.events().clear(); trials.clear() }
+        database.withTransaction { database.events().clear(); trials.clear(); database.library().clear(); database.library().clearRound() }
         pendingTrial = null
+        poolRound = LibraryRound()
         modelConfig = null
-        mutable.update { previous -> UiState(dataGeneration = previous.dataGeneration + 1, loading = false, busy = true, notice = "已清除本地记录、偏好与 API 配置；外部导出文件和服务商留存需另行处理。") }
+        mutable.update { previous -> UiState(dataGeneration = previous.dataGeneration + 1, loading = false, busy = true, notice = "") }
         shown.clear()
         sessionId = UUID.randomUUID().toString()
     }
@@ -337,13 +415,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (mutable.value.busy || mutable.value.trial.enabled) return
         val ctx = context().copy(shownIds = emptySet())
         val allHistory = history()
-        val candidates = engine.eligible(foods, ctx.preferences)
+        val candidates = PersonalPool.select(engine.eligible(foods, ctx.preferences), mutable.value.library.favoriteIds,
+            emptySet(), FoodCodec.strings(JSONArray(poolRound.unavailable)), poolRound.draws, poolRound.explored).foods
         if (candidates.isEmpty()) { mutable.update { it.copy(notice = "没有合格候选。") }; return }
         modelJob = viewModelScope.launch {
             mutable.update { it.copy(busy = true, benchmark = "", notice = "正在运行对照；本次上传候选、限制和结构化历史，不上传密钥以外的账号信息。") }
             try {
                 val results = Strategy.entries.map { strategy ->
-                    "$strategy：${engine.recommend(foods, allHistory, ctx, strategy)?.food?.name}"
+                    "$strategy：${engine.recommend(candidates, allHistory, ctx, strategy, historyFoods)?.food?.name}"
                 }
                 val id = CompatibleModelProvider(config).choose(ctx, allHistory, candidates)
                 val name = candidates.first { it.id == id }.name

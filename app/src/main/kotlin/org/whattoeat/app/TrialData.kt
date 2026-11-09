@@ -54,7 +54,7 @@ interface TrialDao {
 }
 
 data class TrialSnapshot(val enabled: Boolean = false, val active: TrialSessionRow? = null, val hasData: Boolean = false)
-data class TrialPresentation(val token: String, val sessionId: String, val foodId: String, val historyCount: Int, val algorithmVersion: String)
+data class TrialPresentation(val token: String, val sessionId: String, val foodId: String, val historyCount: Int, val algorithmVersion: String, val poolSource: String = "LEGACY", val poolCandidateCount: Int = 0)
 
 /** 分配、展示、结束都在Room事务内串行；应用重启不会消耗新的分配。 */
 class TrialStore(private val db: MealDatabase) {
@@ -71,14 +71,14 @@ class TrialStore(private val db: MealDatabase) {
             seed = SecureRandom().nextLong(), nextOrdinal = 0, enabled = true))
     }
     suspend fun prepare(now: Long, foods: List<Food>, preferences: Preferences, historyCount: Int,
-                        candidateCount: Int): TrialSessionRow? = db.withTransaction {
+                        candidateCount: Int, libraryKey: String = ""): TrialSessionRow? = db.withTransaction {
         val config = dao.config()?.takeIf { it.enabled } ?: return@withTransaction null
         check(config.protocol == TrialRules.PROTOCOL)
         expireInside(now)
         val contextHash = digest(listOf(BuildConfig.VERSION_NAME, preferences.context, preferences.learningEnabled.toString(),
             preferences.excludedIngredients.sorted().joinToString(","), preferences.excludedFoodIds.sorted().joinToString(","),
             preferences.preferredGroups.sorted().joinToString(",")).joinToString("|"))
-        val catalogHash = digest(foods.joinToString("\n") { "${it.id}|${it.name}|${it.ingredients.sorted()}|${it.groups.sorted()}|${it.contexts.sorted()}" })
+        val catalogHash = digest(libraryKey + "|" + PersonalPool.VERSION + "|" + foods.joinToString("\n") { "${it.id}|${it.name}|${it.ingredients.sorted()}|${it.groups.sorted()}|${it.contexts.sorted()}|${it.ingredientsKnown}|${it.aliases.sorted()}" })
         dao.active()?.let { active ->
             if (active.contextHash == contextHash && active.catalogHash == catalogHash) return@withTransaction active
             dao.putSession(active.copy(endedAt = now, endReason = "CONTEXT_CHANGED"))
@@ -99,7 +99,8 @@ class TrialStore(private val db: MealDatabase) {
         if ((0 until entries.length()).any { entries.getJSONObject(it).getString("token") == p.token }) return@withTransaction
         entries.put(JSONObject().put("token", p.token).put("foodId", p.foodId)
             .put("elapsedMs", (now - session.startedAt).coerceAtLeast(0)).put("historyCount", p.historyCount)
-            .put("algorithmVersion", p.algorithmVersion).put("appVersion", BuildConfig.VERSION_NAME))
+            .put("algorithmVersion", p.algorithmVersion).put("appVersion", BuildConfig.VERSION_NAME)
+            .put("poolSource", p.poolSource).put("poolCandidateCount", p.poolCandidateCount).put("poolVersion", PersonalPool.VERSION))
         dao.putSession(session.copy(presentations = entries.toString(), lastActiveAt = maxOf(session.lastActiveAt, now)))
     }
     suspend fun finish(reason: String, now: Long, foodId: String? = null): TrialSessionRow? = db.withTransaction {
@@ -144,7 +145,9 @@ class TrialStore(private val db: MealDatabase) {
             for (i in 0 until presentations.length()) {
                 val p = presentations.getJSONObject(i)
                 shown.put(JSONObject().put("foodId", p.getString("foodId")).put("elapsedMs", p.getLong("elapsedMs"))
-                    .put("historyCount", p.getInt("historyCount")).put("algorithmVersion", p.getString("algorithmVersion")).put("appVersion", p.getString("appVersion")))
+                    .put("historyCount", p.getInt("historyCount")).put("algorithmVersion", p.getString("algorithmVersion")).put("appVersion", p.getString("appVersion"))
+                    .put("poolSource", p.optString("poolSource", "LEGACY")).put("poolCandidateCount", p.optInt("poolCandidateCount", 0))
+                    .put("poolVersion", p.optString("poolVersion", "legacy")))
             }
             result.put(JSONObject().put("sessionId", s.id).put("ordinal", s.ordinal).put("strategy", s.strategy)
                 .put("dayIndex", ((s.startedAt - origin) / 86_400_000).coerceAtLeast(0)).put("mealPeriod", s.mealPeriod)

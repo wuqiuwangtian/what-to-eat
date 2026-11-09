@@ -7,26 +7,27 @@ import kotlin.random.Random
 class Recommender(private val random: Random = Random.Default) {
     fun eligible(foods: List<Food>, preferences: Preferences): List<Food> = foods.filter { food ->
         food.id !in preferences.excludedFoodIds &&
+            (food.ingredientsKnown || preferences.excludedIngredients.isEmpty()) &&
             food.ingredients.none { ingredient -> preferences.excludedIngredients.any { it in ingredient } } &&
             (preferences.context.isBlank() || preferences.context in food.contexts)
     }
 
     fun rank(foods: List<Food>, events: List<MealEvent>, context: RequestContext,
-             strategy: Strategy = Strategy.PERSONALIZED): List<Decision> {
+             strategy: Strategy = Strategy.PERSONALIZED, historyFoods: List<Food> = foods): List<Decision> {
         val available = eligible(foods, context.preferences)
         val unseen = available.filter { it.id !in context.shownIds }
         val newRound = unseen.isEmpty() && available.isNotEmpty()
         val pool = if (newRound) available else unseen
         val history = if (context.preferences.learningEnabled) events.filter { !it.at.isAfter(context.at) } else emptyList()
-        val foodById = foods.associateBy(Food::id)
+        val foodById = historyFoods.associateBy(Food::id)
         val recentEaten = history.filter { it.type == EventType.EATEN &&
             Duration.between(it.at, context.at).toHours() in 0..(7 * 24) }
-        val observedGroups = recentEaten.flatMap { foodById[it.foodId]?.groups.orEmpty() }.toSet()
+        val observedGroups = recentEaten.flatMap { (it.groupsSnapshot ?: foodById[it.foodId]?.groups).orEmpty() }.toSet()
         return pool.map { food ->
             val preference = history.sumOf { event ->
                 val known = foodById[event.foodId]
-                val related = if (event.foodId == food.id) 1.0 else if (known != null) {
-                    food.groups.intersect(known.groups).size * 0.12
+                val related = if (event.foodId == food.id) 1.0 else if (known != null || event.groupsSnapshot != null) {
+                    food.groups.intersect(event.groupsSnapshot ?: known!!.groups).size * 0.12
                 } else 0.0
                 val ageDays = Duration.between(event.at, context.at).seconds / 86400.0
                 val weight = when (event.type) {
@@ -68,8 +69,8 @@ class Recommender(private val random: Random = Random.Default) {
     }
 
     fun recommend(foods: List<Food>, events: List<MealEvent>, context: RequestContext,
-                  strategy: Strategy = Strategy.PERSONALIZED): Decision? {
-        val ranked = rank(foods, events, context, strategy)
+                  strategy: Strategy = Strategy.PERSONALIZED, historyFoods: List<Food> = foods): Decision? {
+        val ranked = rank(foods, events, context, strategy, historyFoods)
         if (ranked.isEmpty()) return null
         if (strategy == Strategy.RANDOM) return ranked.random(random)
         // 在接近最高分的候选中探索，不以确定性的同一答案困住新用户。
@@ -101,7 +102,9 @@ class MealAnalyzer(private val catalog: List<Food>) {
         val groups = foods.flatMap(Food::groups).toSet()
         val suggestions = buildList {
             if (foods.isEmpty()) add("暂时无法确认这顿的组成；可选择已知菜品或补充菜名，不估算热量。")
-            else {
+            else if (foods.any { it.groups.isEmpty() || !it.ingredientsKnown }) {
+                add("部分菜品的原料或类别尚未确认，暂不判断这顿的搭配。")
+            } else {
                 if ("蔬菜" !in groups) add("按常见做法，这份搭配可能蔬菜较少；方便时可加一份青菜。")
                 if (groups.none { it in setOf("肉类", "蛋类", "鱼类", "水产", "豆类", "奶类") }) add("可以考虑搭配鸡蛋、豆腐等蛋白质来源。")
                 if (isEmpty()) add("按常见做法包含多类食物；实际搭配仍取决于配料和份量。")

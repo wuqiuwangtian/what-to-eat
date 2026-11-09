@@ -19,8 +19,9 @@ data class EventRow(
     val confidence: Double,
     val sessionId: String?,
     val detail: String = "",
+    @ColumnInfo(defaultValue = "NULL") val groupsSnapshot: String? = null,
 ) {
-    fun domain() = MealEvent(id, EventType.valueOf(type), foodId, Instant.ofEpochMilli(time), source, confidence, sessionId)
+    fun domain() = MealEvent(id, EventType.valueOf(type), foodId, Instant.ofEpochMilli(time), source, confidence, sessionId, groupsSnapshot?.let { FoodCodec.strings(JSONArray(it)) })
 }
 
 @Dao
@@ -32,11 +33,12 @@ interface EventDao {
     @Query("SELECT * FROM events ORDER BY time, id") suspend fun all(): List<EventRow>
 }
 
-@Database(entities = [EventRow::class, TrialConfigRow::class, TrialSessionRow::class], version = 2,
-    autoMigrations = [AutoMigration(from = 1, to = 2)], exportSchema = true)
+@Database(entities = [EventRow::class, TrialConfigRow::class, TrialSessionRow::class, LibraryRow::class, LibraryRound::class], version = 3,
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)], exportSchema = true)
 abstract class MealDatabase : RoomDatabase() {
     abstract fun events(): EventDao
     abstract fun trials(): TrialDao
+    abstract fun library(): LibraryDao
     companion object {
         fun open(context: Context) = Room.databaseBuilder(context, MealDatabase::class.java, "meals.db").build()
     }
@@ -62,13 +64,14 @@ class SettingsStore(context: Context) {
 fun String.toValues() = split(',', '，', '、', '\n').map(String::trim).filter(String::isNotBlank).toSet()
 
 object DataExport {
-    fun encode(rows: List<EventRow>, preferences: Preferences): String {
+    fun encode(rows: List<EventRow>, preferences: Preferences, library: JSONObject? = null): String {
         val events = JSONArray()
         rows.forEach { row -> events.put(JSONObject().put("id", row.id).put("type", row.type)
             .put("foodId", row.foodId).put("foodName", row.foodName).put("time", row.time)
             .put("source", row.source).put("confidence", row.confidence)
-            .put("sessionId", row.sessionId ?: JSONObject.NULL).put("detail", row.detail)) }
-        return JSONObject().put("formatVersion", 1).put("events", events)
+            .put("sessionId", row.sessionId ?: JSONObject.NULL).put("detail", row.detail)
+                .put("groupsSnapshot", row.groupsSnapshot?.let(::JSONArray) ?: JSONObject.NULL)) }
+        return JSONObject().put("formatVersion", 2).put("events", events).put("foodLibrary", library ?: JSONObject.NULL)
             .put("preferences", JSONObject().put("excludedIngredients", JSONArray(preferences.excludedIngredients.toList()))
                 .put("preferredGroups", JSONArray(preferences.preferredGroups.toList()))
                 .put("excludedFoodIds", JSONArray(preferences.excludedFoodIds.toList()))

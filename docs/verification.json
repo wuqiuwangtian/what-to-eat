@@ -232,7 +232,7 @@
       "source_sha256": "f9e10440c4c678059fb645b434c045b97cb5dd0877bcf43df5c19ea012d388ce"
     }
   },
-  "latest_validation": "pre_human_handoff",
+  "latest_validation": "library_preview",
   "trial_preview": {
     "date": "2026-11-09",
     "app_version": "0.1.0-dev.2",
@@ -446,5 +446,113 @@
     "prior_physical_performance_report": "macrobenchmark-2026-11-09.json",
     "prior_performance_source_revision": "cc91dfc",
     "frozen_apk_physical_performance_remeasured": false
+  },
+  "library_preview": {
+    "date": "2026-11-09",
+    "app_version": "0.1.0-dev.3",
+    "version_code": 3,
+    "catalog_count": 152,
+    "legacy_catalog_count": 113,
+    "starter_count": 32,
+    "pool_policy": "personal-pool-v1",
+    "jvm_tests": [
+      {
+        "name": "org.whattoeat.core.TrialRulesTest",
+        "tests": "3",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.core.RecommenderTest",
+        "tests": "14",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.core.PersonalPoolTest",
+        "tests": "8",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.app.ModelContractTest",
+        "tests": "5",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.app.ProviderTransportTest",
+        "tests": "6",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      },
+      {
+        "name": "org.whattoeat.app.PresentationTraceTest",
+        "tests": "2",
+        "failures": "0",
+        "errors": "0",
+        "skipped": "0"
+      }
+    ],
+    "python_tests": 27,
+    "lint": "passed",
+    "emulator": {
+      "sdk": 29,
+      "result": "OK (30 tests)",
+      "duration_seconds": 36.198,
+      "large_font": {
+        "scale": 2.0,
+        "size": "840x1600",
+        "result": "OK (4 tests)",
+        "duration_seconds": 13.229
+      },
+      "landscape": {
+        "scale": 2.0,
+        "size": "1600x840",
+        "result": "OK (4 tests)",
+        "duration_seconds": 11.155
+      },
+      "font_restored": 1.0,
+      "size_restored": true
+    },
+    "initial_phone_upgrade": {
+      "date": "2026-11-09",
+      "device_alias": "physical-1",
+      "model": "ELI-AN00",
+      "sdk": "36",
+      "schema_before": 2,
+      "schema_after": 3,
+      "original_event_count": 63,
+      "all_original_rows_unchanged": true,
+      "original_rows_sha256": "9f1db13be8ca07a804e53681ac2d155bafe88733cc1782c82577a91a1aacf77f",
+      "trial_enrollment_unchanged": true,
+      "legacy_food_exclusions_checked": 0,
+      "legacy_food_exclusions_preserved": true,
+      "ordinary_app_data_cleared": false,
+      "apk_sha256": "e7f93a2c4f74427ae4b37d67a2628e65c3ccdc38070aca8135411629d3887bd9",
+      "app_version": "0.1.0-dev.3"
+    },
+    "debug_apk_sha256": "d2b7b5717a102daa7e8d3ad72a7469c27f880e413b454595f6f384b07a23b17d",
+    "ordinary_export_format_version": 2,
+    "trial_export_format_version": 1,
+    "protocol": "local-crossover-v1",
+    "screenshots": [
+      "images/library-starter.png",
+      "images/library-editor.png",
+      "images/library-recommendation.png",
+      "images/library-landscape-large-font.png"
+    ],
+    "remaining": [
+      "Final physical update of the last UI revision and isolated physical performance measurement",
+      "Natural coverage feedback and human effectiveness",
+      "Catalog expansion/review and final license/signing gates"
+    ],
+    "no_automatic_human_enrollment": true,
+    "formal_release_published": false
   }
 }

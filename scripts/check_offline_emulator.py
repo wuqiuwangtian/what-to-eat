@@ -74,7 +74,7 @@ try:
     time.sleep(1)
     raw = call('exec-out', 'cat', '/sdcard/Download/' + filename, binary=True)
     data = json.loads(raw)
-    if data.get('formatVersion') != 1 or not data.get('events') or 'preferences' not in data or {'apiKey', 'model'} & data.keys():
+    if data.get('formatVersion') not in {1, 2} or not data.get('events') or 'preferences' not in data or {'apiKey', 'model'} & data.keys():
         raise RuntimeError('Export content did not match contract')
     if not any((e.get('type') == 'PLANNED' for e in data['events'])):
         raise RuntimeError('Planned event missing')

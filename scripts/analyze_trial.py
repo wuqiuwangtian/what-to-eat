@@ -55,6 +55,12 @@ def validate(data):
             if p.get('appVersion') != s['appVersion']:
                 raise ValueError('Mixed application versions within one session')
             integer(p['historyCount'], 'presentation history count'); previous = elapsed
+            if 'poolSource' in p:
+                if p['poolSource'] not in {'LEGACY', 'STARTER', 'FAMILIAR', 'DISCOVERY', 'EXPLICIT_DISCOVERY'}:
+                    raise ValueError('Unknown candidate pool source')
+                integer(p['poolCandidateCount'], 'pool candidate count')
+                if p.get('poolVersion') not in {'legacy', 'personal-pool-v1'}:
+                    raise ValueError('Unknown candidate pool policy')
         if s['endReason'] is None:
             if s['elapsedMs'] is not None:
                 raise ValueError('Open session cannot have completion time')
@@ -82,6 +88,7 @@ def describe(sessions):
     return {
         'assigned_sessions': len(sessions), 'exposed_sessions': len(exposed),
         'unexposed_sessions': len(sessions) - len(exposed),
+        'presentation_pool_sources': dict(Counter(p.get('poolSource', 'LEGACY') for s in exposed for p in s['presentations'])),
         'explicit_adoptions': len(adopted), 'first_choice_adoptions': first,
         'missing_choice_sessions': len(missing),
         'missing_choice_end_reasons': dict(Counter(s['endReason'] or 'OPEN' for s in missing)),
