@@ -27,17 +27,23 @@ def sdk_tool(name):
     return str(tool)
 
 
+def parse_badging(metadata):
+    identity = re.search(r"package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'", metadata)
+    minimum = re.search(r"(?:minSdkVersion|sdkVersion):'(\d+)'", metadata)
+    if not identity or not minimum:
+        raise ValueError('Cannot read APK package metadata')
+    return dict(zip(['package', 'version_code', 'version_name'], identity.groups()),
+                minimum_sdk=int(minimum[1]), debuggable='application-debuggable' in metadata)
+
+
 def apk_metadata(apk):
     metadata = subprocess.check_output([sdk_tool('aapt2'), 'dump', 'badging', str(apk)], text=True)
-    identity = re.search(r"package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'", metadata)
-    minimum = re.search(r"sdkVersion:'(\d+)'", metadata)
+    result = parse_badging(metadata)
     signatures = subprocess.check_output([sdk_tool('apksigner'), 'verify', '--print-certs', str(apk)], text=True)
     cert = re.search(r'Signer #1 certificate SHA-256 digest: ([a-fA-F0-9]{64})', signatures)
-    if not identity or not minimum or not cert:
-        raise ValueError('Cannot verify APK metadata or signature')
-    return dict(zip(['package', 'version_code', 'version_name'], identity.groups()),
-                minimum_sdk=int(minimum[1]), debuggable='application-debuggable' in metadata,
-                signing_certificate_sha256=cert[1].lower())
+    if not cert:
+        raise ValueError('Cannot verify APK signature')
+    return dict(result, signing_certificate_sha256=cert[1].lower())
 
 
 def verify_bundle(bundle, expected_manifest_sha256):

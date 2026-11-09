@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from prepare_preview import verify_bundle
+from prepare_preview import parse_badging, verify_bundle
 
 
 class PreviewIntegrityTest(unittest.TestCase):
@@ -57,3 +57,19 @@ class PreviewIntegrityTest(unittest.TestCase):
         anchor = self.write_manifest({k: v for k, v in self.files.items() if k != '参与者说明.txt'})
         with self.assertRaisesRegex(ValueError, 'Incomplete'):
             verify_bundle(self.bundle, anchor)
+
+
+class ApkMetadataTest(unittest.TestCase):
+    def test_actual_build_tools_35_minimum_field(self):
+        result = parse_badging("package: name='org.whattoeat.app' versionCode='2' versionName='0.1.0-dev.2'\nminSdkVersion:'29'\napplication-debuggable")
+        self.assertEqual(29, result['minimum_sdk'])
+        self.assertTrue(result['debuggable'])
+
+    def test_legacy_minimum_field_and_non_debug_release(self):
+        result = parse_badging("package: name='org.whattoeat.app' versionCode='2' versionName='0.1.0-dev.2'\nsdkVersion:'29'")
+        self.assertFalse(result['debuggable'])
+        self.assertEqual(29, result['minimum_sdk'])
+
+    def test_missing_package_or_minimum_is_not_guessed(self):
+        with self.assertRaises(ValueError):
+            parse_badging("package: name='org.whattoeat.app' versionCode='2' versionName='0.1.0-dev.2'")
