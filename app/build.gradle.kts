@@ -56,17 +56,21 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
-// 生成当前运行时清单供许可核查使用，不收集用户或设备数据。
-tasks.register("runtimeInventory") {
-    val output = layout.buildDirectory.file("reports/runtime-artifacts.tsv")
-    outputs.file(output)
-    doLast {
-        val artifacts = configurations.getByName("debugRuntimeClasspath").resolvedConfiguration.resolvedArtifacts
-        output.get().asFile.apply {
-            parentFile.mkdirs()
-            writeText(artifacts.sortedBy { it.moduleVersion.id.toString() }.joinToString("\n") {
-                "${it.moduleVersion.id}\t${it.file.absolutePath}"
-            } + "\n")
+// 分别解析开发版和发行版，避免把调试工具算作正式随包组件。
+listOf("debug", "release").forEach { variant ->
+    tasks.register("${variant}RuntimeInventory") {
+        val output = layout.buildDirectory.file("reports/$variant-runtime-artifacts.tsv")
+        outputs.file(output)
+        outputs.upToDateWhen { false }
+        doLast {
+            val artifacts = configurations.getByName("${variant}RuntimeClasspath").resolvedConfiguration.resolvedArtifacts
+            output.get().asFile.apply {
+                parentFile.mkdirs()
+                writeText(artifacts.sortedBy { it.moduleVersion.id.toString() }.joinToString("\n") {
+                    "${it.moduleVersion.id}\t${it.file.absolutePath}"
+                } + "\n")
+            }
         }
     }
 }
+tasks.register("runtimeInventory") { dependsOn("debugRuntimeInventory") }

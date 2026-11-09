@@ -24,4 +24,4 @@ All upstream trademarks and copyrights remain with their respective owners. Apac
 
 Before a formal release, generate and review the resolved runtime inventory, retain any additional notices, and update this file. Authoritative versions are pinned in the Gradle build files. No code from the six surveyed peer projects or model weights is currently bundled.
 
-Resolved development runtime: 71 artifacts, recorded in runtime-dependencies.tsv with artifact hashes. The Guava artifact omits the license in its own POM; upstream Guava licensing must be retained. Final notice review remains a release gate.
+Resolved development runtime: 71 artifacts, recorded in runtime-dependencies.tsv with artifact hashes. Resolved release runtime: 67 artifacts, recorded separately in release-runtime-dependencies.tsv; debug-only tooling is excluded. The Guava artifact omits the license in its own POM; upstream Guava licensing must be retained. Final notice review remains a release gate.
