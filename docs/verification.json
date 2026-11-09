@@ -232,7 +232,7 @@
       "source_sha256": "f9e10440c4c678059fb645b434c045b97cb5dd0877bcf43df5c19ea012d388ce"
     }
   },
-  "latest_validation": "trial_preview",
+  "latest_validation": "pre_human_handoff",
   "trial_preview": {
     "date": "2026-11-09",
     "app_version": "0.1.0-dev.2",
@@ -361,5 +361,90 @@
       "ordinary_app_modified": false
     },
     "performance_summary": "macrobenchmark-2026-11-09.json"
+  },
+  "pre_human_handoff": {
+    "date": "2026-11-09",
+    "source_revision": "732477b5130bd84fc1e5667ef862daaa13372007",
+    "app_version": "0.1.0-dev.2",
+    "status": "engineering_preparation_complete_human_gates_pending",
+    "manifest_sha256": "f1c86761477ddd817c030982e9e91e5f496c2e8a8a2eb8b6eada3993d9982649",
+    "debug_apk_sha256": "f54304605f17af3c31038f65c2533293a9c4088cfd8c8a31954080557f8bc62e",
+    "debug_signing_certificate_sha256": "a7dd82e61ef5d4740acf1096bd6f25ef05258ae46cf5e49ef8f5c19144002a58",
+    "unsigned_release_apk_sha256": "463b50aeb38e10e77604f998607abbd358a3a747ef73793cfca09c7d03455a2e",
+    "protocol": "local-crossover-v1",
+    "catalog_sha256": "47d5cff8155c57edbb733457af022e63763cfcdd08482b2262e02e4ae55db9ec",
+    "clean_checkout_build": true,
+    "build_log_sha256": "9215bd542f65e7b8717f556b74925b0241ed1dba387326c25b8e259fea171d16",
+    "gradle_tasks": [
+      "./gradlew",
+      "-Pbenchmarks",
+      ":core:test",
+      ":experiments:run",
+      ":app:testDebugUnitTest",
+      ":app:lintDebug",
+      ":app:assembleDebug",
+      ":app:assembleDebugAndroidTest",
+      ":app:assembleRelease",
+      ":app:assembleBenchmark",
+      ":benchmark:assembleBenchmark",
+      ":app:debugRuntimeInventory",
+      ":app:releaseRuntimeInventory",
+      "--console=plain"
+    ],
+    "jvm_tests": 30,
+    "python_tests": 26,
+    "lint": "passed",
+    "emulator": {
+      "sdk": 29,
+      "result": "OK (19 tests)",
+      "duration_seconds": 21.941,
+      "tested_apk_and_instrumentation_identical_to_frozen_bytes": true
+    },
+    "release_rehearsal": {
+      "result": "passed",
+      "sdk": "29",
+      "apk": {
+        "package": "org.whattoeat.app",
+        "version_code": "2",
+        "version_name": "0.1.0-dev.2",
+        "minimum_sdk": 29,
+        "debuggable": false,
+        "signing_certificate_sha256": "6e33a11f10a79c5ffae81f218d943532743eea968a3808b1ad80d93a9cfb9ca8"
+      },
+      "unsigned_apk_sha256": "463b50aeb38e10e77604f998607abbd358a3a747ef73793cfca09c7d03455a2e",
+      "test_signed_apk_sha256": "593847ef4d9cf93ad02b0beba395ee3043b0e12f451ae53c8fffb0293aaf392f",
+      "fresh_install": true,
+      "same_certificate_reinstall": true,
+      "planned_history_unchanged": true,
+      "temporary_key_deleted": true,
+      "maintainer_key_tested": false,
+      "different_version_upgrade_tested": false,
+      "physical_device_modified": false
+    },
+    "physical_device_refusal_verified": true,
+    "human_review_rows": {
+      "菜品待审查.csv": 113,
+      "debug-许可待审查.csv": 71,
+      "release-许可待审查.csv": 67
+    },
+    "all_rows_initially_not_reviewed": true,
+    "personal_phone_modified_this_round": false,
+    "formal_release_published": false,
+    "remaining": [
+      "Voluntary natural use and descriptive human report",
+      "Catalog expansion to about 300 and human ingredient/source review",
+      "Human license and NOTICE review",
+      "Maintainer long-term signing key and approval; formal candidate upgrade",
+      "Real API credentials/provider validation"
+    ],
+    "coverage_limits": [
+      "Only one physical phone has been tested in prior rounds",
+      "Trial-enabled P95, physical large-font behavior and complete touch-to-pixel latency remain unverified",
+      "Clean checkout reuses toolchain and dependency caches; no byte reproducibility guarantee",
+      "Release rehearsal uses a disposable key and same-version reinstall, not a formal release identity"
+    ],
+    "prior_physical_performance_report": "macrobenchmark-2026-11-09.json",
+    "prior_performance_source_revision": "cc91dfc",
+    "frozen_apk_physical_performance_remeasured": false
   }
 }
